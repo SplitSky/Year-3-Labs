@@ -3,17 +3,10 @@ import matplotlib.pyplot as plt
 
 
 class Data():
-    def __init__(self, fileName):
-        self.x = []
-        self.y = []
-        self.error = []
-        self.ErrorCheck = True
-        self.fileName = fileName[:len(fileName)-1]
-
-        if self.fileName[len(fileName) - 4:] == "txt":
-            self.readData()
-
-
+    def __init__(self, x, y, err):
+        self.x = x
+        self.y = y
+        self.error = err
 
         self.x_div = np.abs(self.x[0] - self.x[1])
         print("The x division is: " + str(self.x_div))
@@ -52,60 +45,73 @@ class Data():
 
     def readData(self):
         array = [[], [], []]
-        temp2 = 0
-        file = open(self.fileName)
-        content = file.readlines()
-        for counter in range(0, len(content)):
-            temp = content[counter]
-            if temp == "end\n":
-                temp2 += 1
-            else:
-                array[temp2].append(float(temp))
-            # end if
-        # end for
-        self.x = array[0]
-        self.y = array[1]
-        self.error = array[2]
-        if len(self.error) == 0:
-            self.ErrorCheck = False
+        channel = [439.7,
+                   440.45,
+                   220.5,
+                   56.14,
+                   44.45,
+                   399.28,
+                   350.36,
+                   300.7,
+                   249.5,
+                   197.62,
+                   100.07,
+                   0,
+                   458.83,
+                   378.18,
+                   333.96,
+                   271.38,
+                   221.4,
+                   459.8]
+        voltage = [42.4,
+                   48,
+                   22.8,
+                   5.92,
+                   5.4,
+                   40.4,
+                   36,
+                   31.2,
+                   25.6,
+                   20.2,
+                   10.2,
+                   0.212,
+                   46.4,
+                   38.8,
+                   34,
+                   28.4,
+                   22.8,
+                   47.6]
+        err = [3,
+               1,
+               1,
+               1,
+               0.4,
+               1,
+               1,
+               1,
+               0.5,
+               0.5,
+               0.4,
+               0.2,
+               1,
+               1,
+               1,
+               1,
+               0.5,
+               3]
 
-        file.close()
-
-    # organize data
-    # show the plot
-
-    def loadCSVFile(self):
-        x_array = []
-        y_array = []
-        file = open(self.fileName)
-        content = file.readlines()
-        for counter in range(0, len(content), 1):
-            entry = content[counter]
-            temp = entry.split(",")
-
-            # heading entry
-            x = float(temp[3])
-            y = float(temp[4])
-            self.x.append(x)
-            self.y.append(y)
-
-def getfile():
-    file = open("file_names.txt","r")
-    content = file.readlines()
-    return content
-
+        self.x = channel
+        self.y = voltage
+        self.err = err
+        # Data loaded
 
 
 def main():
 
-    file = getfile()
     print(file)
     choice = int(input("Enter number: "))
-    d = Data(path + "\\Data\\" + file[choice])
-    # C:\Users\opopn\Desktop\Labs code\Data
+    d = Data()
     d.plotCustom()
-    print(file[choice])
-
 
 
 main()
