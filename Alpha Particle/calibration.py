@@ -8,9 +8,9 @@ class Data():
         self.y = y
         self.error = err
 
-        self.x_div = np.abs(self.x[0] - self.x[1])
-        print("The x division is: " + str(self.x_div))
-        self.signals = []
+        #self.x_div = np.abs(self.x[0] - self.x[1])
+        #print("The x division is: " + str(self.x_div))
+        #self.signals = []
 
     def linearPlotData(self, title, xAxisTitle, yAxisTitle, x, y, error_y, label):
         figure = plt.figure()
