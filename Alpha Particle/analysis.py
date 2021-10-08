@@ -36,13 +36,14 @@ class Data():
             temp = content[counter]
             if (counter >= 0) and (counter < divider):
                 #x values
-                channel.append(content[counter])
+                print(content[counter])
+                channel.append(float(content[counter]))
             elif (counter >= divider) and (counter < divider*2):
                 #y values
-                voltage.append(content[counter])
+                voltage.append(float(content[counter]))
             elif (counter >= divider*2) and (counter <= divider*3):
                 #error values
-                err.append(content[counter])
+                err.append(float(content[counter]))
             else:
                 # error control
                 print("Error entry")
@@ -106,7 +107,7 @@ def main():
     # 5.
     d = Data("data.txt")
     d.readData()
-    d.cubicFitData("testing", "x-axis","y-axis", "line")
+    d.cubicFitData("testing", "x-axis", "y-axis", "line")
 
 main()
 plt.show()
