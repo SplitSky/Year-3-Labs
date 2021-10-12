@@ -7,7 +7,15 @@ class Data():
         self.x = []
         self.y = []
         self.filename = filename
-        self.coeff = []
+        self.coeff = []  # m and c
+        self.coeff_err = []  # errors in m and c for calibration curve
+
+        self.cal_x = []
+        self.cal_y = []
+        self.cal_err = []
+        self.calibrationCurve()
+
+        self.differential = []
 
     # end def
 
@@ -131,16 +139,23 @@ class Data():
         return b + 2 * c * temp + 3 * d * temp ^ 2  # return a numpy array
 
     def convertChannelNumber(self, channel_number):
-        return self.coeff[0] * channel_number + self.coeff[1]
+        energy = self.coeff[0] * channel_number + self.coeff[1]
+        energy_error = np.sqrt((channel_number) ** 2 * self.coeff_err[0] ** 2 + self.coeff_err[1] ** 2)
+        return [energy, energy_error]
+
+    def error_prop_Energy(self, x, m, err_m, err_c, err_x):
+        error = m ** 2 * err_x ** 2 + err_c ** 2 + x ** 2 * err_m ** 2
+        error = np.sqrt(error)
+        return error
 
     def calibrationCurve(self):
         alphaEnergy = 4.77  # MeV
         zero = 0
         temp = Data("data.txt")  # calibration object
         temp.readData()
-        x = temp.get_x()
-        y = temp.get_y()
-        err = temp.get_err()
+        x = temp.get_x()  # channel number
+        y = temp.get_y()  # voltage
+        err = temp.get_err()  # voltage error
         # first two points are calibration of the source energy
         alpha_point = [0.5 * (x[0] + x[1]), 0.5 * (y[0] + y[1]), 0.5 * (err[0] + err[0])]
         zero_point = [x[len(x)], y[len(y)], err[len(err)]]
@@ -148,36 +163,44 @@ class Data():
         # get the two point energy calibration
         energy_values = [0, 4.77]  # MeV
         voltage = [zero_point[1], alpha_point[1]]  # the corresponding 2-point calibration points
+        voltage_err = []
         # Get equation to get 1 to 1 Voltage to Energy conversion
         m = (energy_values[1] - energy_values[0]) / (voltage[1] - voltage[0])
         c = energy_values[1]
 
-        temp_x = x[2:len(x)]
-        print(temp_x)
+        temp_x = x
+        # print(temp_x)
         energy_values = np.array(temp_x) * m + c  # gets the energy values at the same values as the voltage
+        # finds the energy values to which each voltage corresponds
+
+        # voltage to energy conversion finished
+        # x value: channel number
+        # y value: energy
+        # err: on energy
 
         temp = np.numpy(err) / y  # % error
         y = energy_values[2:len(y)]
         err = temp * y
 
-        fitting_coeff, fit_err = self.DataFit(temp_x, y, err, "Calibration Curve", "Channel number", "Energy", "Signal", 1)
-        self.coeff
-
-        # fit calibration curve
-        # self.DataFit(x,y,err,"Calibration Curve", "Channel number","Energy")
-
-        # use calibration curve to find the values of energy corresponding to channel number
-
-    ### integrator
-    ### iteration fitter???
+        fitting_coeff, fit_err = self.DataFit(temp_x, y, err, "Calibration Curve", "Channel number", "Energy", "Signal",
+                                              1)
+        self.coeff = [fitting_coeff[0], fitting_coeff[1]]  # mx+c
+        self.coeff_err = [fit_err[0][0], fit_err[1][1]]
 
     def gasAnalysis(self):
         # convert pressure into distance
         distance = 142.3 * (np.array(self.x) / 1000)  # mm
         self.x = distance  # now numpy array
-
-        # fit a cubic
-        # get the calibration curve
+        # convert channel number into energy
+        energy, energy_error = self.convertChannelNumber(np.array(self.x))
+        # fit cubic with energy vs distance
+        fitting_coeff, fitting_err = self.DataFit(distance, energy, energy_error, "Energy vs Distance", "Distance/ mm",
+                                                  "Energy/ MeV", "Signal", 3)
+        # store the differential array
+        self.differential = self.returnDifferential(fitting_coeff[2], 2*fitting_coeff[1], 3*fitting_coeff[0], distance)
+        # plot diff. on y axis and energy on x-axis
+        
+        # obtain errors for the differential
 
 
 def main():
