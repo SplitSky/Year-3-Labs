@@ -7,8 +7,18 @@ class Data():
         self.x = []
         self.y = []
         self.filename = filename
+        self.coeff = []
 
     # end def
+
+    def get_x(self):
+        return self.x
+
+    def get_y(self):
+        return self.y
+
+    def get_err(self):
+        return self.err
 
     def plotCustom(self):
         # get data
@@ -57,10 +67,32 @@ class Data():
         # Data loaded
         print("Data loaded.")
         file.close()
-        print("x values")
-        print(self.x)
-        print(self.y)
-        print(self.err)
+
+    # end def
+
+    def DataFit(self, x, y, error_y, title, xAxisTitle, yAxisTitle, label, degree):
+        figure = plt.figure()
+        axes_1 = figure.add_subplot(121)
+        axes_1.plot(x, y, "b+", label=label)
+        axes_1.errorbar(x, y, error_y, fmt="b+")
+        plt.xlabel(xAxisTitle)  #
+        plt.ylabel(yAxisTitle)  # edit from axes
+        plt.title(title)
+        y_weights = (1 / error_y) * np.ones(np.size(y))
+        y_errors = error_y * np.ones(np.size(y))
+        fit_parameters, fit_errors = np.polyfit(x, y, degree, cov=True, w=y_weights)
+
+        y_fitted = np.polyval(fit_parameters, x)
+        axes_1.plot(x, y_fitted)
+        axes_2 = figure.add_subplot(122)
+        axes_2.set_xlabel(xAxisTitle)
+        axes_2.set_ylabel(yAxisTitle)
+        axes_2.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
+
+        # plt.savefig(title + ".png")
+        print(fit_parameters)
+        # a + bx + cx^2 + dx^3 = y
+        return fit_parameters, fit_errors
 
     # end def
 
@@ -98,13 +130,55 @@ class Data():
         temp = np.array(x)
         return b + 2 * c * temp + 3 * d * temp ^ 2  # return a numpy array
 
+    def convertChannelNumber(self, channel_number):
+        return self.coeff[0] * channel_number + self.coeff[1]
+
+    def calibrationCurve(self):
+        alphaEnergy = 4.77  # MeV
+        zero = 0
+        temp = Data("data.txt")  # calibration object
+        temp.readData()
+        x = temp.get_x()
+        y = temp.get_y()
+        err = temp.get_err()
+        # first two points are calibration of the source energy
+        alpha_point = [0.5 * (x[0] + x[1]), 0.5 * (y[0] + y[1]), 0.5 * (err[0] + err[0])]
+        zero_point = [x[len(x)], y[len(y)], err[len(err)]]
+
+        # get the two point energy calibration
+        energy_values = [0, 4.77]  # MeV
+        voltage = [zero_point[1], alpha_point[1]]  # the corresponding 2-point calibration points
+        # Get equation to get 1 to 1 Voltage to Energy conversion
+        m = (energy_values[1] - energy_values[0]) / (voltage[1] - voltage[0])
+        c = energy_values[1]
+
+        temp_x = x[2:len(x)]
+        print(temp_x)
+        energy_values = np.array(temp_x) * m + c  # gets the energy values at the same values as the voltage
+
+        temp = np.numpy(err) / y  # % error
+        y = energy_values[2:len(y)]
+        err = temp * y
+
+        fitting_coeff, fit_err = self.DataFit(temp_x, y, err, "Calibration Curve", "Channel number", "Energy", "Signal", 1)
+        self.coeff
+
+        # fit calibration curve
+        # self.DataFit(x,y,err,"Calibration Curve", "Channel number","Energy")
+
+        # use calibration curve to find the values of energy corresponding to channel number
+
     ### integrator
     ### iteration fitter???
 
     def gasAnalysis(self):
         # convert pressure into distance
-        distance = 142.3 * (np.array(self.x)/1000) # mm
-        self.x = distance #now numpy array
+        distance = 142.3 * (np.array(self.x) / 1000)  # mm
+        self.x = distance  # now numpy array
+
+        # fit a cubic
+        # get the calibration curve
+
 
 def main():
     # 1. load the data for the selected sample
@@ -127,7 +201,7 @@ def main():
     while indicator:
         try:
             indicator = False
-            choice = int(input("Choice: ")) # choice is index+1
+            choice = int(input("Choice: "))  # choice is index+1
         except:
             print("Try again")
 
