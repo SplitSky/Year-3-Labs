@@ -101,6 +101,7 @@ class Data():
         x = self.x
         y = self.y
         error_y = self.err
+        error_y = np.array(error_y)
 
         figure = plt.figure()
         axes_1 = figure.add_subplot(121)
@@ -127,10 +128,18 @@ class Data():
         print(fit_parameters[3])
         # a + bx + cx^2 + dx^3 = y
 
-    def returnDifferential(self, b, c, d, x):
+    def returnDifferential(self, b, c, d, x, deg):
+
         array = []
+        if deg == 2:
+            function = lambda b, c, d, x: b + 2 * c * x
+        elif deg == 3:
+            function = lambda b, c, d, x: b + 2 * c * x + 3 * d * x ** 2
+        else:
+            function = lambda b, c, d, x: 0
+
         for entry in x:
-            array.append(b + 2 * c * entry) # 3 * d * entry ^ 2)
+            array.append(function(b, c, d, x))
         return np.array(array)
 
     def convertChannelNumber(self, channel_number):
@@ -153,7 +162,7 @@ class Data():
         err = temp.get_err()  # voltage error
         # first two points are calibration of the source energy
         alpha_point = [0.5 * (x[0] + x[1]), 0.5 * (y[0] + y[1]), 0.5 * (err[0] + err[0])]
-        zero_point = [x[len(x)-1], y[len(y)-1], err[len(err)-1]]
+        zero_point = [x[len(x) - 1], y[len(y) - 1], err[len(err) - 1]]
 
         print("Debug 1")
         print(len(x))
@@ -181,7 +190,7 @@ class Data():
 
         err = np.array(err)
 
-        err = np.sqrt(err**2 * m**2)
+        err = np.sqrt(err ** 2 * m ** 2)
         y = energy_values
         x = np.array(x)
         print(y.size)
@@ -205,10 +214,44 @@ class Data():
         fitting_coeff, fitting_err = self.DataFit(distance, energy, energy_error, "Energy vs Distance", "Distance/ mm",
                                                   "Energy/ MeV", "Signal", 2)
         # store the differential array
-        self.differential = self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance)
+        self.differential = self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3)
         # plot diff. on y axis and energy on x-axis
         self.plotCustom2(energy, self.differential, "dE/dx vs Energy: Bragg Curve", "Differential")
         # obtain errors for the differential
+        self.fitting_I(energy,self.differential,)
+
+
+
+    def integrator(self, x, y, x_init, x_fin, resolution):
+        return 0
+
+    def getChiSqrt(self, fit_y, y, ey):
+        # all arrays are numpy arrays
+        # returns the chi squared value
+        chi_sqrt = ((y - fit_y) / ey) ** 2
+        return np.sum(chi_sqrt)
+
+    def fitting_I(self, x, y, ey):
+        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
+        # declares the function we want to fit
+        limit = 100
+        step = 1
+        chi_sqr = 101
+        I = 10
+        n = 0
+        while chi_sqr > limit and n < 10000:
+
+            # check higher
+            fit_y = function(4, 2, x, I + step)
+            chi_sqr_high = self.getChiSqrt(fit_y, y, ey)
+            # check lower
+            fit_y = function(4, 2, x, I - step)
+            chi_sqr_low = self.getChiSqrt(fit_y, y, ey)
+            # adjust I
+            if chi_sqr_high < chi_sqr_low:
+                I += step
+            n += 1
+        return I
 
 
 def main():
@@ -218,7 +261,7 @@ def main():
     # 4. integrate under the curve using an integrator
     # 5.
 
-    filenames = ["data.txt", "Helium.txt", "Argon.txt", "Nitrogen.txt"]
+    filenames = ["data.txt", "Helium.txt", "Argon.txt", "Nitrogen.txt", "Helium2.txt"]
     # Gas analysis
 
     print("Which data set?")
@@ -244,6 +287,44 @@ def main():
         print("Gas Analysis")
         d.gasAnalysis()
         d.plotCustom()
+
+    elif choice == 2:
+        print("Analysing Helium data set 1")
+        print(filenames[choice - 1] + str(" File is being loaded"))
+        d = Data(filenames[choice - 1])
+        d.readData()
+        print("Gas Analysis")
+        d.gasAnalysis()
+        d.plotCustom()
+
+    elif choice == 3:
+        print("Analysing Argon data set")
+        print(filenames[choice - 1] + str(" File is being loaded"))
+        d = Data(filenames[choice - 1])
+        d.readData()
+        print("Gas Analysis")
+        d.gasAnalysis()
+        d.plotCustom()
+
+    elif choice == 4:
+        print("Analysing Nitrogen data set")
+        print(filenames[choice - 1] + str(" File is being loaded"))
+        d = Data(filenames[choice - 1])
+        d.readData()
+        print("Gas Analysis")
+        d.gasAnalysis()
+        d.plotCustom()
+
+    elif choice == 5:
+        print("Analysing Helium data set 2")
+        print(filenames[choice - 1] + str(" File is being loaded"))
+        d = Data(filenames[choice - 1])
+        d.readData()
+        print("Gas Analysis")
+        d.gasAnalysis()
+        d.plotCustom()
+
+
     elif (choice == 0):
         # gas calibration
         d = Data(filenames[choice - 1])
@@ -254,6 +335,7 @@ def main():
         print("Metal Analysis")
     else:
         print("error")
+
 
 
 main()
