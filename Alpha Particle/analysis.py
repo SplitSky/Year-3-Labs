@@ -13,7 +13,6 @@ class Data():
         self.cal_x = []
         self.cal_y = []
         self.cal_err = []
-        self.calibrationCurve()
 
         self.differential = []
 
@@ -33,8 +32,6 @@ class Data():
         print(self.x)
         print(self.y)
         plt.plot(np.array(self.x), np.array(self.y), "b+")
-
-    # end def
 
     def plotCustom2(self, x, y, axesTitle, label):
         figure = plt.figure()
@@ -76,8 +73,6 @@ class Data():
         print("Data loaded.")
         file.close()
 
-    # end def
-
     def DataFit(self, x, y, error_y, title, xAxisTitle, yAxisTitle, label, degree):
         figure = plt.figure()
         axes_1 = figure.add_subplot(121)
@@ -98,11 +93,9 @@ class Data():
         axes_2.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
 
         # plt.savefig(title + ".png")
-        print(fit_parameters)
+        print("fit parameters" + str(fit_parameters))
         # a + bx + cx^2 + dx^3 = y
         return fit_parameters, fit_errors
-
-    # end def
 
     def cubicFitData(self, title, xAxisTitle, yAxisTitle, label):
         x = self.x
@@ -135,12 +128,14 @@ class Data():
         # a + bx + cx^2 + dx^3 = y
 
     def returnDifferential(self, b, c, d, x):
-        temp = np.array(x)
-        return b + 2 * c * temp + 3 * d * temp ^ 2  # return a numpy array
+        array = []
+        for entry in x:
+            array.append(b + 2 * c * entry) # 3 * d * entry ^ 2)
+        return np.array(array)
 
     def convertChannelNumber(self, channel_number):
         energy = self.coeff[0] * channel_number + self.coeff[1]
-        energy_error = np.sqrt((channel_number) ** 2 * self.coeff_err[0] ** 2 + self.coeff_err[1] ** 2)
+        energy_error = np.sqrt(channel_number ** 2 * self.coeff_err[0] ** 2 + self.coeff_err[1] ** 2)
         return [energy, energy_error]
 
     def error_prop_Energy(self, x, m, err_m, err_c, err_x):
@@ -158,7 +153,13 @@ class Data():
         err = temp.get_err()  # voltage error
         # first two points are calibration of the source energy
         alpha_point = [0.5 * (x[0] + x[1]), 0.5 * (y[0] + y[1]), 0.5 * (err[0] + err[0])]
-        zero_point = [x[len(x)], y[len(y)], err[len(err)]]
+        zero_point = [x[len(x)-1], y[len(y)-1], err[len(err)-1]]
+
+        print("Debug 1")
+        print(len(x))
+        print(len(y))
+        print(len(err))
+        print("Debug end")
 
         # get the two point energy calibration
         energy_values = [0, 4.77]  # MeV
@@ -178,9 +179,14 @@ class Data():
         # y value: energy
         # err: on energy
 
-        temp = np.numpy(err) / y  # % error
-        y = energy_values[2:len(y)]
-        err = temp * y
+        err = np.array(err)
+
+        err = np.sqrt(err**2 * m**2)
+        y = energy_values
+        x = np.array(x)
+        print(y.size)
+        print(err.size)
+        print(x.size)
 
         fitting_coeff, fit_err = self.DataFit(temp_x, y, err, "Calibration Curve", "Channel number", "Energy", "Signal",
                                               1)
@@ -188,6 +194,8 @@ class Data():
         self.coeff_err = [fit_err[0][0], fit_err[1][1]]
 
     def gasAnalysis(self):
+        # get the calibration curve
+        self.calibrationCurve()
         # convert pressure into distance
         distance = 142.3 * (np.array(self.x) / 1000)  # mm
         self.x = distance  # now numpy array
@@ -195,11 +203,11 @@ class Data():
         energy, energy_error = self.convertChannelNumber(np.array(self.x))
         # fit cubic with energy vs distance
         fitting_coeff, fitting_err = self.DataFit(distance, energy, energy_error, "Energy vs Distance", "Distance/ mm",
-                                                  "Energy/ MeV", "Signal", 3)
+                                                  "Energy/ MeV", "Signal", 2)
         # store the differential array
-        self.differential = self.returnDifferential(fitting_coeff[2], 2*fitting_coeff[1], 3*fitting_coeff[0], distance)
+        self.differential = self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance)
         # plot diff. on y axis and energy on x-axis
-        
+        self.plotCustom2(energy, self.differential, "dE/dx vs Energy: Bragg Curve", "Differential")
         # obtain errors for the differential
 
 
@@ -230,10 +238,11 @@ def main():
 
     if choice in [2, 3, 4, 5]:
         # gas analysis
-        print(filenames[choice - 1])
+        print(filenames[choice - 1] + str(" File is being loaded"))
         d = Data(filenames[choice - 1])
         d.readData()
         print("Gas Analysis")
+        d.gasAnalysis()
         d.plotCustom()
     elif (choice == 0):
         # gas calibration
