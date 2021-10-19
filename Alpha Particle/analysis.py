@@ -1,6 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+gas_source_energy = 4.77  # MeV
+material_source_energy = 5.8  # MeV
+
+
+def plotData(title, xAxisTitle, yAxisTitle, x, y, error_y, label):
+    figure = plt.figure()
+    axes_1 = figure.add_subplot(121)
+    axes_1.plot(x, y, "b+", label=label)
+    axes_1.errorbar(x, y, error_y, fmt="b+")
+    plt.xlabel(xAxisTitle)  #
+    plt.ylabel(yAxisTitle)  # edit from axes
+    plt.title(title)
+
+    # plt.savefig(title + ".png")
+
 
 class Data():
     def __init__(self, filename):
@@ -15,6 +30,8 @@ class Data():
         self.cal_err = []
 
         self.differential = []
+        self.plots = []
+        self.axes = []
 
     # end def
 
@@ -35,9 +52,9 @@ class Data():
 
     def plotCustom2(self, x, y, axesTitle, label):
         figure = plt.figure()
-        axes_1 = figure.add_subplot(111)
-        axes_1.set_title(axesTitle)
-        axes_1.plot(x, y, "b+", label=label)
+        axes = figure.add_subplot(111)
+        axes.set_title(axesTitle)
+        axes.plot(x, y, "b+", label=label)
 
     def readData(self):
         array = [[], [], []]
@@ -50,7 +67,6 @@ class Data():
         content = file.readlines()
         temp2 = 0
         divider = len(content) / 3
-        print("divider" + str(divider))
         for counter in range(0, len(content)):
             temp = content[counter]
             if (counter >= 0) and (counter < divider):
@@ -103,10 +119,10 @@ class Data():
         error_y = self.err
         error_y = np.array(error_y)
 
-        figure = plt.figure()
-        axes_1 = figure.add_subplot(121)
-        axes_1.plot(x, y, "b+", label=label)
-        axes_1.errorbar(x, y, error_y, fmt="b+")
+        figure2 = plt.figure()
+        axes_3 = figure2.add_subplot(121)
+        axes_3.plot(x, y, "b+", label=label)
+        axes_3.errorbar(x, y, error_y, fmt="b+")
         plt.xlabel(xAxisTitle)  #
         plt.ylabel(yAxisTitle)  # edit from axes
         plt.title(title)
@@ -115,11 +131,11 @@ class Data():
         fit_parameters, fit_errors = np.polyfit(x, y, 3, cov=True, w=y_weights)
 
         y_fitted = np.polyval(fit_parameters, x)
-        axes_1.plot(x, y_fitted)
-        axes_2 = figure.add_subplot(122)
-        axes_2.set_xlabel(xAxisTitle)
-        axes_2.set_ylabel(yAxisTitle)
-        axes_2.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
+        axes_3.plot(x, y_fitted)
+        axes_4 = figure2.add_subplot(122)
+        axes_4.set_xlabel(xAxisTitle)
+        axes_4.set_ylabel(yAxisTitle)
+        axes_4.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
 
         # plt.savefig(title + ".png")
         print(fit_parameters[0])
@@ -128,8 +144,7 @@ class Data():
         print(fit_parameters[3])
         # a + bx + cx^2 + dx^3 = y
 
-    def returnDifferential(self, b, c, d, x, deg):
-
+    def returnDifferential(self, b, c, d, x, deg, err_b, err_c, err_d):
         array = []
         if deg == 2:
             function = lambda b, c, d, x: b + 2 * c * x
@@ -138,9 +153,18 @@ class Data():
         else:
             function = lambda b, c, d, x: 0
 
-        for entry in x:
-            array.append(function(b, c, d, x))
-        return np.array(array)
+        # errors for the differential
+        errors = []
+
+        function2 = lambda er_d, d, er_b, b, er_c, c, x: np.sqrt(er_b ** 2 + x ** 2 * er_c ** 2 + x ** 4 * er_d ** 2)
+
+        errors = function2(err_d, d, err_b, b, err_c, c, x)
+        array = function(b, c, d, x)  # gets the function for each entry of x
+
+        print(array)
+        print(errors)
+        self.differential = np.array(array)
+        self.differential_error = np.array(errors)
 
     def convertChannelNumber(self, channel_number):
         energy = self.coeff[0] * channel_number + self.coeff[1]
@@ -163,12 +187,6 @@ class Data():
         # first two points are calibration of the source energy
         alpha_point = [0.5 * (x[0] + x[1]), 0.5 * (y[0] + y[1]), 0.5 * (err[0] + err[0])]
         zero_point = [x[len(x) - 1], y[len(y) - 1], err[len(err) - 1]]
-
-        print("Debug 1")
-        print(len(x))
-        print(len(y))
-        print(len(err))
-        print("Debug end")
 
         # get the two point energy calibration
         energy_values = [0, 4.77]  # MeV
@@ -206,24 +224,21 @@ class Data():
         # get the calibration curve
         self.calibrationCurve()
         # convert pressure into distance
-        distance = 142.3 * (np.array(self.x) / 1000)  # mm
+        distance = 142.3 * (np.array(self.x) / 1000)  # mm  - convert from pressure into distance
         self.x = distance  # now numpy array
         # convert channel number into energy
         energy, energy_error = self.convertChannelNumber(np.array(self.x))
         # fit cubic with energy vs distance
         fitting_coeff, fitting_err = self.DataFit(distance, energy, energy_error, "Energy vs Distance", "Distance/ mm",
-                                                  "Energy/ MeV", "Signal", 2)
-        # store the differential array
-        self.differential = self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3)
+                                                  "Energy/ MeV", "Signal", 3)
+        # store the differential array - generate the array using the values from the fit
+        self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3, fitting_err[2],
+                                fitting_err[1], fitting_err[0]) # note: distance is a numpy array
         # plot diff. on y axis and energy on x-axis
-        self.plotCustom2(energy, self.differential, "dE/dx vs Energy: Bragg Curve", "Differential")
+        self.plotCustom2(energy, self.differential, "dE/dx vs Energy", "Differential")
+        plotData("dE/dx vs Energy", "Energy", "Differential", energy, self.differential, self.differential_error,"")
         # obtain errors for the differential
-        self.fitting_I(energy,self.differential,)
-
-
-
-    def integrator(self, x, y, x_init, x_fin, resolution):
-        return 0
+        #self.fitting_I(energy, self.differential)
 
     def getChiSqrt(self, fit_y, y, ey):
         # all arrays are numpy arrays
@@ -237,9 +252,10 @@ class Data():
         limit = 100
         step = 1
         chi_sqr = 101
-        I = 10
+        I = 10  # estimate using 10Z eV
         n = 0
-        while chi_sqr > limit and n < 10000:
+        upper = 10000
+        while chi_sqr > limit and n < upper:
 
             # check higher
             fit_y = function(4, 2, x, I + step)
@@ -270,6 +286,8 @@ def main():
     print("3. Argon")
     print("4. Nitrogen")
     print("5. Helium 2 electric boogaloo")
+    print("6. Nickel")
+    print("7. Aluminium")
     indicator = True
     choice = 0
     while indicator:
@@ -330,12 +348,17 @@ def main():
         d = Data(filenames[choice - 1])
         d.readData()
         print("Calibration Analysis")
-    elif (choice > 5):  # material analysis
+    elif (choice == 6):  # material analysis
         d = Data(filenames[choice - 1])
+        print("Analysing Nickel dataset")
         print("Metal Analysis")
+    elif (choice == 7):  # material analysis
+        d = Data(filenames[choice - 1])
+        print("Analysing Aluminium dataset")
+        print("Metal analysis")
+
     else:
         print("error")
-
 
 
 main()
