@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 19 15:37:17 2021
+
+@author: arencatonyener
+"""
+
+import numpy as np
+
+
+'''n is even'''
+
+N = 4
+Z = 2
+I = 5
+
+
+def function(E):
+    return (1/(3.801*(N*Z/E)*(np.log(E)+6.307+np.log(I))))
+
+
+a = 0.1
+b = 100
+n = 10000000
+h = (b-a)/(n-1)
+x = np.linspace(a, b, n)
+f = function(x)
+
+I_simpson = (h/3)*(f[0]+2*sum(f[:n-2:2])+4*sum(f[1:n-1:2])+f[n-1])
+
+
+print(f)
+print(x)
+print(I_simpson)
+
+
+
+
+
+
