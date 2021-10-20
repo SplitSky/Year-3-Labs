@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({'font.size': 14})
+plt.style.use('default')
+figure = plt.figure()
+plt.rcParams.update({'errorbar.capsize': 2})
+
 gas_source_energy = 4.77  # MeV
 material_source_energy = 5.8  # MeV
 
@@ -90,59 +95,18 @@ class Data():
         file.close()
 
     def DataFit(self, x, y, error_y, title, xAxisTitle, yAxisTitle, label, degree):
-        figure = plt.figure()
-        axes_1 = figure.add_subplot(121)
-        axes_1.plot(x, y, "b+", label=label)
-        axes_1.errorbar(x, y, error_y, fmt="b+")
-        plt.xlabel(xAxisTitle)  #
-        plt.ylabel(yAxisTitle)  # edit from axes
-        plt.title(title)
         y_weights = (1 / error_y) * np.ones(np.size(y))
-        y_errors = error_y * np.ones(np.size(y))
         fit_parameters, fit_errors = np.polyfit(x, y, degree, cov=True, w=y_weights)
 
-        y_fitted = np.polyval(fit_parameters, x)
-        axes_1.plot(x, y_fitted)
-        axes_2 = figure.add_subplot(122)
-        axes_2.set_xlabel(xAxisTitle)
-        axes_2.set_ylabel(yAxisTitle)
-        axes_2.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
+        print('Fit np.polyfit of' + title)
+        print("The fitting polynomial is of degree " + str(degree))
+        print('Constant  term   a = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+        print('Linear term      b = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+        print('Quadratic term   c = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+        print('Cubic term       d = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
 
-        # plt.savefig(title + ".png")
-        print("fit parameters" + str(fit_parameters))
-        # a + bx + cx^2 + dx^3 = y
         return fit_parameters, fit_errors
 
-    def cubicFitData(self, title, xAxisTitle, yAxisTitle, label):
-        x = self.x
-        y = self.y
-        error_y = self.err
-        error_y = np.array(error_y)
-
-        figure2 = plt.figure()
-        axes_3 = figure2.add_subplot(121)
-        axes_3.plot(x, y, "b+", label=label)
-        axes_3.errorbar(x, y, error_y, fmt="b+")
-        plt.xlabel(xAxisTitle)  #
-        plt.ylabel(yAxisTitle)  # edit from axes
-        plt.title(title)
-        y_weights = (1 / error_y) * np.ones(np.size(y))
-        y_errors = error_y * np.ones(np.size(y))
-        fit_parameters, fit_errors = np.polyfit(x, y, 3, cov=True, w=y_weights)
-
-        y_fitted = np.polyval(fit_parameters, x)
-        axes_3.plot(x, y_fitted)
-        axes_4 = figure2.add_subplot(122)
-        axes_4.set_xlabel(xAxisTitle)
-        axes_4.set_ylabel(yAxisTitle)
-        axes_4.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
-
-        # plt.savefig(title + ".png")
-        print(fit_parameters[0])
-        print(fit_parameters[1])
-        print(fit_parameters[2])
-        print(fit_parameters[3])
-        # a + bx + cx^2 + dx^3 = y
 
     def returnDifferential(self, b, c, d, x, deg, err_b, err_c, err_d):
         array = []
@@ -169,12 +133,7 @@ class Data():
     def convertChannelNumber(self, channel_number):
         energy = self.coeff[0] * channel_number + self.coeff[1]
         energy_error = np.sqrt(channel_number ** 2 * self.coeff_err[0] ** 2 + self.coeff_err[1] ** 2)
-        return [energy, energy_error]
-
-    def error_prop_Energy(self, x, m, err_m, err_c, err_x):
-        error = m ** 2 * err_x ** 2 + err_c ** 2 + x ** 2 * err_m ** 2
-        error = np.sqrt(error)
-        return error
+        return energy, energy_error
 
     def calibrationCurve(self):
         alphaEnergy = 4.77  # MeV
@@ -207,7 +166,6 @@ class Data():
         # err: on energy
 
         err = np.array(err)
-
         err = np.sqrt(err ** 2 * m ** 2)
         y = energy_values
         x = np.array(x)
@@ -228,15 +186,15 @@ class Data():
         self.x = distance  # now numpy array
         # convert channel number into energy
         energy, energy_error = self.convertChannelNumber(np.array(self.x))
+
         # fit cubic with energy vs distance
         fitting_coeff, fitting_err = self.DataFit(distance, energy, energy_error, "Energy vs Distance", "Distance/ mm",
                                                   "Energy/ MeV", "Signal", 3)
         # store the differential array - generate the array using the values from the fit
-        self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3, fitting_err[2],
-                                fitting_err[1], fitting_err[0]) # note: distance is a numpy array
+        self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3, fitting_err[2][2],
+                                fitting_err[1][1], fitting_err[0][0]) # note: distance is a numpy array
         # plot diff. on y axis and energy on x-axis
-        self.plotCustom2(energy, self.differential, "dE/dx vs Energy", "Differential")
-        plotData("dE/dx vs Energy", "Energy", "Differential", energy, self.differential, self.differential_error,"")
+        ####plotData("dE/dx vs Energy", "Energy", "Differential", energy, self.differential, self.differential_error,"")
         # obtain errors for the differential
         #self.fitting_I(energy, self.differential)
 
@@ -256,7 +214,6 @@ class Data():
         n = 0
         upper = 10000
         while chi_sqr > limit and n < upper:
-
             # check higher
             fit_y = function(4, 2, x, I + step)
             chi_sqr_high = self.getChiSqrt(fit_y, y, ey)
@@ -297,7 +254,7 @@ def main():
         except:
             print("Try again")
 
-    if choice in [2, 3, 4, 5]:
+    if choice == 1:
         # gas analysis
         print(filenames[choice - 1] + str(" File is being loaded"))
         d = Data(filenames[choice - 1])
@@ -322,7 +279,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        d.plotCustom()
+        #d.plotCustom()
 
     elif choice == 4:
         print("Analysing Nitrogen data set")
@@ -331,7 +288,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        d.plotCustom()
+        #d.plotCustom()
 
     elif choice == 5:
         print("Analysing Helium data set 2")
@@ -340,7 +297,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        d.plotCustom()
+        #d.plotCustom()
 
 
     elif (choice == 0):
@@ -352,11 +309,11 @@ def main():
         d = Data(filenames[choice - 1])
         print("Analysing Nickel dataset")
         print("Metal Analysis")
+
     elif (choice == 7):  # material analysis
         d = Data(filenames[choice - 1])
         print("Analysing Aluminium dataset")
         print("Metal analysis")
-
     else:
         print("error")
 
