@@ -35,8 +35,9 @@ class Data():
         self.cal_err = []
 
         self.differential = []
-        self.plots = []
-        self.axes = []
+
+        self.calibration_data = []
+        self.energy_vs_distance = []
 
     # end def
 
@@ -100,10 +101,14 @@ class Data():
 
         print('Fit np.polyfit of' + title)
         print("The fitting polynomial is of degree " + str(degree))
-        print('Constant  term   a = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
-        print('Linear term      b = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
-        print('Quadratic term   c = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
-        print('Cubic term       d = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+        if degree == 3:
+            print('Constant  term   a = {:04.10f} +/- {:04.10f}'.format(fit_parameters[3], fit_errors[3][3]))
+            print('Linear term      b = {:04.10f} +/- {:04.10f}'.format(fit_parameters[2], fit_errors[2][2]))
+            print('Quadratic term   c = {:04.10f} +/- {:04.10f}'.format(fit_parameters[1], fit_errors[1][1]))
+            print('Cubic term       d = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+        elif degree == 1:
+            print('Gradient  m = {:04.10f} +/- {:04.10f}'.format(fit_parameters[1], fit_errors[1][1]))
+            print('Intercept d = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
 
         return fit_parameters, fit_errors
 
@@ -169,9 +174,6 @@ class Data():
         err = np.sqrt(err ** 2 * m ** 2)
         y = energy_values
         x = np.array(x)
-        print(y.size)
-        print(err.size)
-        print(x.size)
 
         fitting_coeff, fit_err = self.DataFit(temp_x, y, err, "Calibration Curve", "Channel number", "Energy", "Signal",
                                               1)
@@ -196,7 +198,8 @@ class Data():
         # plot diff. on y axis and energy on x-axis
         ####plotData("dE/dx vs Energy", "Energy", "Differential", energy, self.differential, self.differential_error,"")
         # obtain errors for the differential
-        #self.fitting_I(energy, self.differential)
+        I = self.fitting_I(energy, self.differential, self.differential_error)
+        print("The value of the ionisation energy is: " + str(I))
 
     def getChiSqrt(self, fit_y, y, ey):
         # all arrays are numpy arrays
@@ -212,7 +215,7 @@ class Data():
         chi_sqr = 101
         I = 10  # estimate using 10Z eV
         n = 0
-        upper = 10000
+        upper = 1000000
         while chi_sqr > limit and n < upper:
             # check higher
             fit_y = function(4, 2, x, I + step)
@@ -225,6 +228,48 @@ class Data():
                 I += step
             n += 1
         return I
+
+    def plotting_everything(self,choice):
+        # choice = [True,False,True,False,True] - array of numbers indicating which plots to do
+
+        if (choice[0]):
+            # plotting the calibration curve with fit
+            figure = plt.figure()
+            axes_1 = figure.add_subplot(121)
+            axes_1.plot(x, y, "b+", label=label)
+            axes_1.errorbar(x, y, error_y, fmt="b+")
+            plt.xlabel("Channel number")  #
+            plt.ylabel("Energy")  # edit from axes
+            plt.title(title)
+            y_weights = (1 / error_y) * np.ones(np.size(y))
+            y_errors = error_y * np.ones(np.size(y))
+            fit_parameters, fit_errors = np.polyfit(x, y, 1, cov=True, w=y_weights)
+
+            y_fitted = np.polyval(fit_parameters, x)
+            axes_1.plot(x, y_fitted) # fit the model onto the first plot
+            axes_2 = figure.add_subplot(122)
+            axes_2.set_xlabel("Channel number")
+            axes_2.set_ylabel("Error")
+            axes_2.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
+
+            plt.savefig(title + ".png")
+
+        #end if
+
+        if (choice[1]):
+            # plotting the -differential against energy plot with fit
+
+        #end if
+
+        if (choice[2]):
+            # plotting energy against distance with fit
+
+        #end if
+
+        if (choice[3]):
+            # plotting the model with the fit of I along with the experimental data
+
+        #end if
 
 
 def main():
@@ -261,7 +306,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        d.plotCustom()
+        #d.plotCustom()
 
     elif choice == 2:
         print("Analysing Helium data set 1")
@@ -270,7 +315,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        d.plotCustom()
+        #d.plotCustom()
 
     elif choice == 3:
         print("Analysing Argon data set")
