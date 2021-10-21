@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import minimize
 
 plt.rcParams.update({'font.size': 14})
 plt.style.use('default')
@@ -109,7 +110,7 @@ class Data():
             print('Gradient  m = {0} +/- {1}'.format(fit_parameters[1], fit_errors[1][1]))
             print('Intercept d = {0} +/- {1}'.format(fit_parameters[0], fit_errors[0][0]))
 
-        return fit_parameters, fit_errors
+        return fit_parameters, fit_errors ### be careful with this return it returns an error coviariance matrix not a list
 
     def returnDifferential(self, b, c, d, x, deg, err_b, err_c, err_d):
         array = []
@@ -267,49 +268,96 @@ class Data():
         print("Energy Errors")
         print(self.energy_error)
         # fit cubic with energy vs distance
+
+        self.distance = self.distance / 1000
+        self.energy = self.energy * 10 ** 6
+
         fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, "Energy vs Distance",
                                                   "Distance/ mm",
                                                   "Energy/ MeV", "Signal", 3)
         # store the differential array - generate the array using the values from the fit
-        self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3, fitting_err[2][2],
-                                fitting_err[1][1], fitting_err[0][0])  # note: distance is a numpy array
+
+        d = fitting_coeff[0]
+        c = fitting_coeff[1]
+        b = fitting_coeff[2]
+        a = fitting_coeff[3]
+        sig_d = fitting_err[0][0]
+        sig_c = fitting_err[1][1]
+        sig_b = fitting_err[2][2]
+        sig_a = fitting_err[3][3]
+
+        # b, c, d, x, deg, err_b, err_c, err_d
+        self.returnDifferential(b, c, d, distance, 3, sig_b,sig_c, sig_d)  # note: distance is a numpy array
+
+        plt.plot(self.energy, self.differential, "+", label="Experimental Data")
+        plt.title("dE/dx vs E")
+
         print("differential")
         print(self.differential)
         print(self.differential_error)
         # obtain errors for the differential
         I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
+
+        function = lambda N, Z, E, I: 3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
+        plt.plot(self.energy, function(4,2,self.energy,I),"b+", label="Model")
+        plt.legend()
+
         print("The value of the ionisation energy is: " + str(I))
 
     def getChiSqrt(self, fit_y, y, ey):
         # all arrays are numpy arrays
         # returns the chi squared value
         chi_sqrt = ((y - fit_y) / ey) ** 2
+        print("Chi sqr" + str(np.sum(chi_sqrt)))
         return np.sum(chi_sqrt)
 
     def fitting_I(self, x, y, ey):
-        y = -1 * y  # make the differential -dE/dx
-        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
+        # make the differential -dE/dx
+        #ey = np.ones(36)
+        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
         # declares the function we want to fit
-        limit = 100
-        step = 1
-        chi_sqr = 101
-        I = 20  # estimate using 10Z eV
+        limit = 10000
+        step = 0.1
+        chi_sqr = 100000000000000
+        I = 50  # estimate using 10Z eV
         n = 0
-        upper = 1000
-        while chi_sqr > limit and n < upper:
+        upper = 100
+        stay = True
+
+        #debug start
+        print("debug start")
+        print(len(y))
+        print(len(x))
+        print(len(function(4, 2, x, 5)))
+
+        while stay:
+            if chi_sqr < limit:
+                stay = False
+                print("limit")
+            if n > upper:
+                stay = False
+                print("iterations")
+
             # check higher
-            fit_y = function(4, 2, x, I + step)
+            fit_y = function(4, 2, x, I + 10*step)
             chi_sqr_high = self.getChiSqrt(fit_y, y, ey)
             # check lower
-            fit_y = function(4, 2, x, I - step)
+            fit_y = function(4, 2, x, I - 10*step)
             chi_sqr_low = self.getChiSqrt(fit_y, y, ey)
             # adjust I
             if chi_sqr_high < chi_sqr_low:
                 I += step
+            else:
+                I -=step
             n += 1
+            print("I = " + str(I))
 
         self.I = I
         return I
+
+    def fitting_I_2(self):
+        I = 10
+
 
     # noinspection PyTupleAssignmentBalance
     def plotting_everything(self, choice):
@@ -418,6 +466,8 @@ def main():
         d.gasAnalysis()
     else:
         d.materialAnalysis()
+
+
 
     # d.plotting_everything([True, True, True, True])
 
