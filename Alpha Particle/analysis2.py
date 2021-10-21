@@ -94,19 +94,20 @@ class Data():
         file.close()
 
     def DataFit(self, x, y, error_y, title, xAxisTitle, yAxisTitle, label, degree):
-        y_weights = (1 / error_y) * np.ones(np.size(y))
+        # y_weights = (1 / error_y) * np.ones(np.size(y))
+        y_weights = error_y  # check later #########################################################################
         fit_parameters, fit_errors = np.polyfit(x, y, degree, cov=True, w=y_weights)
 
         print('Fit np.polyfit of' + title)
         print("The fitting polynomial is of degree " + str(degree))
         if degree == 3:
-            print('Constant  term   a = {:04.10f} +/- {:04.10f}'.format(fit_parameters[3], fit_errors[3][3]))
-            print('Linear term      b = {:04.10f} +/- {:04.10f}'.format(fit_parameters[2], fit_errors[2][2]))
-            print('Quadratic term   c = {:04.10f} +/- {:04.10f}'.format(fit_parameters[1], fit_errors[1][1]))
-            print('Cubic term       d = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+            print('Constant  term   a = {0} +/- {1}'.format(fit_parameters[3], fit_errors[3][3]))
+            print('Linear term      b = {0} +/- {1}'.format(fit_parameters[2], fit_errors[2][2]))
+            print('Quadratic term   c = {0} +/- {1}'.format(fit_parameters[1], fit_errors[1][1]))
+            print('Cubic term       d = {0} +/- {1}'.format(fit_parameters[0], fit_errors[0][0]))
         elif degree == 1:
-            print('Gradient  m = {:04.10f} +/- {:04.10f}'.format(fit_parameters[1], fit_errors[1][1]))
-            print('Intercept d = {:04.10f} +/- {:04.10f}'.format(fit_parameters[0], fit_errors[0][0]))
+            print('Gradient  m = {0} +/- {1}'.format(fit_parameters[1], fit_errors[1][1]))
+            print('Intercept d = {0} +/- {1}'.format(fit_parameters[0], fit_errors[0][0]))
 
         return fit_parameters, fit_errors
 
@@ -131,13 +132,23 @@ class Data():
         self.differential_error = np.array(errors)
 
     def convertChannelNumber(self, channel_number):
-        energy = self.coeff[1] * channel_number + self.coeff[0]
-        print("convert channel number")
-        print(self.coeff)
-        energy_error = np.sqrt(channel_number ** 2 * self.coeff_err[0] ** 2 + self.coeff_err[1] ** 2)
+        # assumes the channel number is a numpy array
+        m = self.coeff[0]
+        sigma_m = self.coeff_err[0]
+        c = self.coeff[1]
+        sigma_c = self.coeff_err[1]
+
+        energy = m * channel_number + c
+        print("m: " + str(m))
+        print("c: " + str(c))
+        energy_error = np.sqrt(channel_number ** 2 * sigma_m ** 2 + sigma_c ** 2)
         return energy, energy_error
 
     def calibrationCurve(self, type):
+        # the type variable determines which type of experiment we are doing
+        # the type = True does the calibration curve for gases while the False does the materials. The analysis is
+        # then the same for both with one exception of the pressure being converted into effective distance
+
         fit_param = []
         fit_err = []
         if type:
@@ -159,6 +170,7 @@ class Data():
                 y_weights = Volt_err
                 fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
                 return fit_parameters[0] * ch + fit_parameters[1]
+
             def function(ch):
                 return Vin_Eout(Chin_Vout(ch))
         else:
@@ -194,11 +206,11 @@ class Data():
                 return Vin_Eout(Chin_Vout(ch))
         # end if
 
-        x = ch
+        x = np.array(ch)
         y = function(x)
         Volt_err = np.array(Volt_err)
-        y_err = np.sqrt(m_1 ** 2 * Volt_err ** 2) ## propagates the errors from V onto the energy
-        fit_param, fit_err = np.polyfit(x, y, 1, weight=y_err) # final fit with the proper weighting
+        y_err = np.sqrt(m_1 ** 2 * Volt_err ** 2)  ## propagates the errors from V onto the energy
+        fit_param, fit_err = np.polyfit(x, y, 1, w=y_err, cov=True)  # final fit with the proper weighting
         print(fit_param)
         print(fit_err)
 
@@ -209,28 +221,54 @@ class Data():
         # assigns the value within the object from the correct calibration
 
     def materialAnalysis(self):
-
-        ### placeholder
-        a = 1
+        # get the calibration curve
+        self.calibrationCurve(False)
+        # convert pressure into distance
+        # mm  - conversion from the micro meters which the data is recorded in
+        '''
+        to keep the units consistent the data has been recorded in um but here it is
+        converted into mm to ensure the plots are comparable
+        scaling should take care of the rest
+        '''
+        self.y = np.array(self.y)  # now numpy array
+        self.distance = self.y
+        # convert channel number into energy
+        self.energy, self.energy_error = self.convertChannelNumber(np.array(self.x))
+        print("Energy")
+        print(self.energy)
+        print("Energy Errors")
+        print(self.energy_error)
+        # fit cubic with energy vs distance
+        fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, "Energy vs Distance",
+                                                  "Distance/ mm",
+                                                  "Energy/ MeV", "Signal", 3)
+        # store the differential array - generate the array using the values from the fit
+        self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], self.distance, 3,
+                                fitting_err[2][2],
+                                fitting_err[1][1], fitting_err[0][0])  # note: distance is a numpy array
+        print("differential")
+        print(self.differential)
+        print(self.differential_error)
+        # obtain errors for the differential
+        I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
+        print("The value of the ionisation energy is: " + str(I))
 
     def gasAnalysis(self):
         # get the calibration curve
-        self.calibrationCurve(type)
+        self.calibrationCurve(True)
         # convert pressure into distance
-        distance = 142.3 * (np.array(self.x) / 1000)  # mm  - convert from pressure into distance
-        self.x = distance  # now numpy array
-        # convert channel number into energy
-        energy, energy_error = self.convertChannelNumber(np.array(self.x))
-        print("Energy")
-        print(energy)
-        print("Energy Errors")
-        print(energy_error)
-
-        self.energy = energy
+        distance = 142.3 * (np.array(self.y) / 1000)  # mm  - convert from pressure into effective distance
+        self.y = distance  # now numpy array
         self.distance = distance
-        self.energy_error = energy_error
+        # convert channel number into energy
+        self.energy, self.energy_error = self.convertChannelNumber(np.array(self.x))
+        print("Energy")
+        print(self.energy)
+        print("Energy Errors")
+        print(self.energy_error)
         # fit cubic with energy vs distance
-        fitting_coeff, fitting_err = self.DataFit(distance, energy, energy_error, "Energy vs Distance", "Distance/ mm",
+        fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, "Energy vs Distance",
+                                                  "Distance/ mm",
                                                   "Energy/ MeV", "Signal", 3)
         # store the differential array - generate the array using the values from the fit
         self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3, fitting_err[2][2],
@@ -239,7 +277,7 @@ class Data():
         print(self.differential)
         print(self.differential_error)
         # obtain errors for the differential
-        I = self.fitting_I(energy, np.array(self.differential), self.differential_error)
+        I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
         print("The value of the ionisation energy is: " + str(I))
 
     def getChiSqrt(self, fit_y, y, ey):
