@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 plt.rcParams.update({'font.size': 14})
 plt.style.use('default')
@@ -132,8 +132,6 @@ class Data():
         errors = function2(err_d, d, err_b, b, err_c, c, x)
         array = function(b, c, d, x)  # gets the function for each entry of x
 
-        print(array)
-        print(errors)
         self.differential = np.array(array)
         self.differential_error = np.array(errors)
 
@@ -199,8 +197,6 @@ class Data():
         # store the differential array - generate the array using the values from the fit
         self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], distance, 3, fitting_err[2][2],
                                 fitting_err[1][1], fitting_err[0][0])  # note: distance is a numpy array
-        # plot diff. on y axis and energy on x-axis
-        ####plotData("dE/dx vs Energy", "Energy", "Differential", energy, self.differential, self.differential_error,"")
         # obtain errors for the differential
         I = self.fitting_I(energy, np.array(self.differential), self.differential_error)
         print("The value of the ionisation energy is: " + str(I))
@@ -220,7 +216,7 @@ class Data():
         chi_sqr = 101
         I = 20  # estimate using 10Z eV
         n = 0
-        upper = 1000000
+        upper = 1000
         while chi_sqr > limit and n < upper:
             # check higher
             fit_y = function(4, 2, x, I + step)
@@ -236,6 +232,7 @@ class Data():
         self.I = I
         return I
 
+    # noinspection PyTupleAssignmentBalance
     def plotting_everything(self, choice):
         # choice = [True,False,True,False,True] - array of numbers indicating which plots to do
 
@@ -243,6 +240,8 @@ class Data():
             # plotting the calibration curve with fit
             # energy against channel number and the model
             self.energy_error = np.array(self.energy_error)
+            y = self.energy
+            x = np.array(self.distance)
             figure = plt.figure()
             axes_1 = figure.add_subplot(121)
             axes_1.plot(self.distance, self.energy, "b+")
@@ -305,7 +304,7 @@ class Data():
             y_fitted = function(4, 2, x, self.I)
             figure3 = plt.figure()
             axes_5 = figure3.add_subplot(121)
-            axes_5.plot(x, y, y_err, fmt="b+")
+            axes_5.plot(x, y, y_err,"b+")
             axes_5.set_xlabel("Energy E/ MeV")
             axes_5.set_ylabel("-dE/dx")
             axes_5.set_title("Model against the experimental data")
@@ -317,7 +316,7 @@ class Data():
             axes_6.set_xlabel("-dE/dx")
             axes_6.set_ylabel("Error")
             axes_6.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
-            plt.savefig("Fitting I against experimental data")
+            plt.savefig("Fitting_I_curve.png")
 
         # end if
 
@@ -333,7 +332,6 @@ def main():
     # Gas analysis
 
     print("Which data set?")
-    print("1. Calibration for gas")
     print("2. Helium")
     print("3. Argon")
     print("4. Nitrogen")
@@ -349,23 +347,14 @@ def main():
         except:
             print("Try again")
 
-    if choice == 1:
-        # gas analysis
-        print(filenames[choice - 1] + str(" File is being loaded"))
-        d = Data(filenames[choice - 1])
-        d.readData()
-        print("Gas Analysis")
-        d.gasAnalysis()
-        # d.plotCustom()
-
-    elif choice == 2:
+    if choice == 2:
         print("Analysing Helium data set 1")
         print(filenames[choice - 1] + str(" File is being loaded"))
         d = Data(filenames[choice - 1])
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        # d.plotCustom()
+        d.plotting_everything([True,True,True,True])
 
     elif choice == 3:
         print("Analysing Argon data set")
@@ -374,7 +363,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        # d.plotCustom()
+        d.plotting_everything([True, True, True, True])
 
     elif choice == 4:
         print("Analysing Nitrogen data set")
@@ -383,7 +372,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        # d.plotCustom()
+        d.plotting_everything([True, True, True, True])
 
     elif choice == 5:
         print("Analysing Helium data set 2")
@@ -392,7 +381,7 @@ def main():
         d.readData()
         print("Gas Analysis")
         d.gasAnalysis()
-        # d.plotCustom()
+        d.plotting_everything([True, True, True, True])
 
 
     elif (choice == 0):

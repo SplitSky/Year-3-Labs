@@ -10,16 +10,22 @@ gas_source_energy = 4.77  # MeV
 material_source_energy = 5.8  # MeV
 
 
-def plotData(title, xAxisTitle, yAxisTitle, x, y, error_y, label):
-    figure = plt.figure()
-    axes_1 = figure.add_subplot(121)
-    axes_1.plot(x, y, "b+", label=label)
-    axes_1.errorbar(x, y, error_y, fmt="b+")
-    plt.xlabel(xAxisTitle)  #
-    plt.ylabel(yAxisTitle)  # edit from axes
-    plt.title(title)
+def get_choice():
+    print("Enter the data set number:")
+    print("1. Nitrogen")
+    print("2. Helium 1")
+    print("3. Helium 2")
+    print("4. Argon")
+    print("5. Nickel")
+    print("6. Aluminium")
+    choice = input("Enter the name: ")
+    file_names = ["Nitrogen.txt", "Helium.txt", "Helium2.txt", "Argon.txt", "Nickel.txt", "Aluminium.txt"]
+    if int(choice) - 1 in [0, 1, 2, 3]:
+        type = True
+    else:
+        type = False
 
-    # plt.savefig(title + ".png")
+    return file_names[int(choice) - 1], type
 
 
 class Data():
@@ -43,6 +49,7 @@ class Data():
         self.energy_error = []
 
         self.I = 0
+        self.readData()
 
     def get_x(self):
         return self.x
@@ -52,18 +59,6 @@ class Data():
 
     def get_err(self):
         return self.err
-
-    def plotCustom(self):
-        # get data
-        print(self.x)
-        print(self.y)
-        plt.plot(np.array(self.x), np.array(self.y), "b+")
-
-    def plotCustom2(self, x, y, axesTitle, label):
-        figure = plt.figure()
-        axes = figure.add_subplot(111)
-        axes.set_title(axesTitle)
-        axes.plot(x, y, "b+", label=label)
 
     def readData(self):
         array = [[], [], []]
@@ -142,57 +137,85 @@ class Data():
         energy_error = np.sqrt(channel_number ** 2 * self.coeff_err[0] ** 2 + self.coeff_err[1] ** 2)
         return energy, energy_error
 
-    def calibrationCurve(self):
-        alphaEnergy = 4.77  # MeV
-        zero = 0
-        temp = Data("data.txt")  # calibration object
-        temp.readData()
-        x = temp.get_x()  # channel number
-        print(x)
-        y = temp.get_y()  # voltage
-        err = temp.get_err()  # voltage error
-        # first two points are calibration of the source energy
-        alpha_point = [0.5 * (x[0] + x[1]), 0.5 * (y[0] + y[1]), 0.5 * (err[0] + err[0])]
-        zero_point = [x[len(x) - 1], y[len(y) - 1], err[len(err) - 1]]
+    def calibrationCurve(self, type):
+        fit_param = []
+        fit_err = []
+        if type:
+            # gasses
+            V = [42.4, 50, 64, 30.8, 7.92, 6.8, 55.6, 49.6, 42.8, 34.8, 27.4, 13.8, 64, 52.8, 46.8, 38.8, 31, 0.304]
+            E = [4.77, 0]
+            ch = [439.7, 459.8, 440.45, 220.5, 56.14, 44.45, 399.28, 350.36, 300.7, 249.5, 197.62, 100.07, 458.83,
+                  378.18, 333.96, 271.38, 221.4, 0]
+            Volt_err = [3, 3, 1, 1, 1, 0.4, 1, 1, 1, 0.5, 0.5, 0.4, 1, 1, 1, 1, 1, 0.2]
+            dif_V = 0.5 * (42.4 + 50) - 0.304
+            dif_E = 4.77  # MeV
+            m_1 = dif_E / dif_V
+            c_1 = m_1 * 0.304 * -1
+            # relate voltage to energy
+            Vin_Eout = lambda V: m_1 * V + c_1
 
+            # relate channel number to voltage
+            def Chin_Vout(ch):
+                y_weights = Volt_err
+                fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
+                return fit_parameters[0] * ch + fit_parameters[1]
+            def function(ch):
+                return Vin_Eout(Chin_Vout(ch))
+        else:
+            # materials
+            V = [88.8, 88.8, 104, 10.3, 5.72, 95.2, 85.6, 77.6, 68, 57.6, 47.6, 37, 26.6, 15.9, 5.32, 10.7, 21.4, 31.6,
+                 42.4, 52.4, 62.4, 72.4]
+            E = [5.8, 0]
+            ch = [880.62, 880.52, 880.64, 84.53, 47.86, 806.3, 729.72, 652.29, 570.34, 486.16, 400.41, 312.37, 224.12,
+                  134.76, 46.72, 89.56, 178.66, 267.57, 355.56, 442.22, 527.39, 610.54]
+            Volt_err = [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35,
+                        0.35, 0.35, 0.35, 0.35, 0.35, 0.35]
 
-        # get the two point energy calibration
-        energy_values = [0, 4.77]  # MeV
-        voltage = [zero_point[1], alpha_point[1]]  # the corresponding 2-point calibration points
-        voltage_err = []
-        # Get equation to get 1 to 1 Voltage to Energy conversion
-        m = (energy_values[1] - energy_values[0]) / (voltage[1] - voltage[0])
-        c = energy_values[1]
-        print("fitting")
-        print(m)
-        print(c)
+            dif_V = 88.8 - 0.304
+            dif_E = 5.8  # MeV
+            m_1 = dif_E / dif_V
+            c_1 = m_1 * 0.304 * -1  # assuming same systematic shift in the zero value
 
-        temp_x = x
-        energy_values = np.array(temp_x) * m + c  # gets the energy values at the same values as the voltage
-        # finds the energy values to which each voltage corresponds
+            # m_1 = 5.8/880.62
+            # y = np.array(ch)
+            # y = ch * k # scale with k
 
-        # voltage to energy conversion finished
-        # x value: channel number
-        # y value: energy
-        # err: on energy
+            # relate voltage to energy
+            def Vin_Eout(V):  # assuming the intercept is at (0,0)
+                return m_1 * V
 
-        err = np.array(err)
-        err = np.sqrt(err ** 2 * m ** 2)
-        y = energy_values
-        x = np.array(x)
+            # relate channel number to voltage
+            def Chin_Vout(ch):
+                y_weights = Volt_err
+                fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
+                return fit_parameters[0] * ch + fit_parameters[1]
 
-        fitting_coeff, fit_err = self.DataFit(temp_x, y, err, "Calibration Curve", "Channel number", "Energy", "Signal",
-                                              1)
-        self.coeff = [fitting_coeff[1], fitting_coeff[0]]  # mx+c
-        self.coeff_err = [fit_err[0][0], fit_err[1][1]]
-        print("Fitting coefficient from the second fit")
-        print(self.coeff)
-        print(self.coeff_err)
+            def function(ch):
+                return Vin_Eout(Chin_Vout(ch))
+        # end if
 
+        x = ch
+        y = function(x)
+        Volt_err = np.array(Volt_err)
+        y_err = np.sqrt(m_1 ** 2 * Volt_err ** 2) ## propagates the errors from V onto the energy
+        fit_param, fit_err = np.polyfit(x, y, 1, weight=y_err) # final fit with the proper weighting
+        print(fit_param)
+        print(fit_err)
+
+        self.coeff = fit_param
+        self.coeff_err = []
+        self.coeff_err.append(fit_err[0][0])
+        self.coeff_err.append(fit_err[1][1])
+        # assigns the value within the object from the correct calibration
+
+    def materialAnalysis(self):
+
+        ### placeholder
+        a = 1
 
     def gasAnalysis(self):
         # get the calibration curve
-        self.calibrationCurve()
+        self.calibrationCurve(type)
         # convert pressure into distance
         distance = 142.3 * (np.array(self.x) / 1000)  # mm  - convert from pressure into distance
         self.x = distance  # now numpy array
@@ -349,11 +372,16 @@ class Data():
             plt.savefig("Fitting_I_curve.png")
         # end if
 
+
 def main():
-    d = Data("Nitrogen.txt")  # init
-    d.readData()
-    d.gasAnalysis()
-    #d.plotting_everything([True, True, True, True])
+    file_name, type = get_choice()
+    d = Data(file_name)  # init
+    if type:
+        d.gasAnalysis()
+    else:
+        d.materialAnalysis()
+
+    # d.plotting_everything([True, True, True, True])
 
 
 main()
