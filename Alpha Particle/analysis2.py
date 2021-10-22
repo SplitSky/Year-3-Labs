@@ -109,6 +109,7 @@ class Data():
         elif degree == 1:
             print('Gradient  m = {0} +/- {1}'.format(fit_parameters[1], fit_errors[1][1]))
             print('Intercept d = {0} +/- {1}'.format(fit_parameters[0], fit_errors[0][0]))
+        print(" ")
 
         return fit_parameters, fit_errors  ### be careful with this return it returns an error coviariance matrix not a list
 
@@ -140,8 +141,6 @@ class Data():
         sigma_c = self.coeff_err[1]
 
         energy = m * channel_number + c
-        print("m: " + str(m))
-        print("c: " + str(c))
         energy_error = np.sqrt(channel_number ** 2 * sigma_m ** 2 + sigma_c ** 2)
         return energy, energy_error
 
@@ -159,11 +158,11 @@ class Data():
             ch = [439.7, 459.8, 440.45, 220.5, 56.14, 44.45, 399.28, 350.36, 300.7, 249.5, 197.62, 100.07, 458.83,
                   378.18, 333.96, 271.38, 221.4, 0]
             Volt_err = [3, 3, 1, 1, 1, 0.4, 1, 1, 1, 0.5, 0.5, 0.4, 1, 1, 1, 1, 1, 0.2]
-            ch_err = np.ones(len(ch)) * 0 # channel number error
+            ch_err = np.ones(len(ch)) * 5 # channel number error
             dif_V = 0.5 * (42.4 + 50) - 0.304
             dif_E = 4.77  # MeV
         else:
-
+            # materials
             V = [88.8, 88.8, 104, 10.3, 5.72, 95.2, 85.6, 77.6, 68, 57.6, 47.6, 37, 26.6, 15.9, 5.32, 10.7, 21.4, 31.6,
                  42.4, 52.4, 62.4, 72.4]
             E = [5.8, 0]
@@ -219,6 +218,8 @@ class Data():
         self.coeff_err = []
         self.coeff_err.append(fit_err[0][0])
         self.coeff_err.append(fit_err[1][1])
+        print("The calibration curve energy errors")
+        print(err_E)
         mean_err = np.array(err_E).mean() ## averages the mean error
         return mean_err# returns energy errors
         # assigns the value within the object from the correct calibration
@@ -261,12 +262,12 @@ class Data():
         self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], self.distance, 3,
                                 fitting_err[2][2],
                                 fitting_err[1][1], fitting_err[0][0])  # note: distance is a numpy array
-        print("differential")
-        print(self.differential)
-        print(self.differential_error)
+        #print("differential")
+        #print(self.differential)
+        #print(self.differential_error)
         # obtain errors for the differential
-        I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
-        print("The value of the ionisation energy is: " + str(I))
+        #I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
+        #print("The value of the ionisation energy is: " + str(I))
 
     def gasAnalysis(self):
         # get the calibration curve
@@ -309,12 +310,12 @@ class Data():
         # b, c, d, x, deg, err_b, err_c, err_d
         self.returnDifferential(b, c, d, distance, 3, sig_b, sig_c, sig_d)  # note: distance is a numpy array
 
-        plt.plot(self.energy, self.differential, "+", label="Experimental Data")
-        plt.title("dE/dx vs E")
+        #plt.plot(self.energy, self.differential, "+", label="Experimental Data")
+        #plt.title("dE/dx vs E")
 
-        print("differential")
-        print(self.differential)
-        print(self.differential_error)
+        #print("differential")
+        #print(self.differential)
+        #print(self.differential_error)
         # obtain errors for the differential
         #I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
 
