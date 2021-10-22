@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import minimize
 
 plt.rcParams.update({'font.size': 14})
 plt.style.use('default')
@@ -110,7 +109,7 @@ class Data():
             print('Gradient  m = {0} +/- {1}'.format(fit_parameters[1], fit_errors[1][1]))
             print('Intercept d = {0} +/- {1}'.format(fit_parameters[0], fit_errors[0][0]))
 
-        return fit_parameters, fit_errors ### be careful with this return it returns an error coviariance matrix not a list
+        return fit_parameters, fit_errors  ### be careful with this return it returns an error coviariance matrix not a list
 
     def returnDifferential(self, b, c, d, x, deg, err_b, err_c, err_d):
         array = []
@@ -175,7 +174,7 @@ class Data():
             def function(ch):
                 return Vin_Eout(Chin_Vout(ch))
         else:
-            # materials
+
             V = [88.8, 88.8, 104, 10.3, 5.72, 95.2, 85.6, 77.6, 68, 57.6, 47.6, 37, 26.6, 15.9, 5.32, 10.7, 21.4, 31.6,
                  42.4, 52.4, 62.4, 72.4]
             E = [5.8, 0]
@@ -183,34 +182,63 @@ class Data():
                   134.76, 46.72, 89.56, 178.66, 267.57, 355.56, 442.22, 527.39, 610.54]
             Volt_err = [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35,
                         0.35, 0.35, 0.35, 0.35, 0.35, 0.35]
+            ch_err = np.ones(len(ch)) * 5
 
             dif_V = 88.8 - 0.304
             dif_E = 5.8  # MeV
             m_1 = dif_E / dif_V
-            c_1 = m_1 * 0.304 * -1  # assuming same systematic shift in the zero value
+            c_1 = m_1 * 0.304 * -1
 
-            # m_1 = 5.8/880.62
-            # y = np.array(ch)
-            # y = ch * k # scale with k
+            m_e = [m_1, 0]
+            c_e = [c_1, 0]
 
             # relate voltage to energy
             def Vin_Eout(V):  # assuming the intercept is at (0,0)
                 return m_1 * V
 
             # relate channel number to voltage
+            y_weights = Volt_err
+            fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
+
+            m_v = [fit_parameters[0], fit_errors[0][0]]
+            c_v = [fit_parameters[1], fit_errors[1][1]]
+
             def Chin_Vout(ch):
-                y_weights = Volt_err
-                fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
-                return fit_parameters[0] * ch + fit_parameters[1]
+                return m_v[0] * ch + c_v[0]
 
             def function(ch):
                 return Vin_Eout(Chin_Vout(ch))
+
+            x = np.array(ch)
+            y = function(x)
+            plt.plot(x, y, "b+")
+            plt.show()
+
+            def energy_error(m_e, m_v, ch, c_v, c_e):
+                # each value is an array [value, error]
+                # c is a numpy array
+                sigma_E = 0
+                sigma_E += (m_e[0] * ch[0]) ** 2 * m_v[1] ** 2
+                sigma_E += (m_e[0] * m_v[0]) ** 2 * ch[1] ** 2
+                sigma_E += m_e[0] ** 2 * c_v[1] ** 2
+                sigma_E = np.sqrt(sigma_E)
+                return sigma_E
+
+            err_E = []
+            for counter in range(0, len(ch)):
+                err_E.append(energy_error(m_e, m_v, [ch[counter], ch_err[counter]], c_v, c_e))
+
         # end if
 
         x = np.array(ch)
         y = function(x)
         Volt_err = np.array(Volt_err)
-        y_err = np.sqrt(m_1 ** 2 * Volt_err ** 2)  ## propagates the errors from V onto the energy
+        y_err = err_E  ## propagates the errors from V onto the energy
+        #
+        print("Chad propagation")
+        print(err_E)
+        print("Basic propagation results")
+        print(y_err)
         fit_param, fit_err = np.polyfit(x, y, 1, w=y_err, cov=True)  # final fit with the proper weighting
         print(fit_param)
         print(fit_err)
@@ -272,6 +300,9 @@ class Data():
         self.distance = self.distance / 1000
         self.energy = self.energy * 10 ** 6
 
+        print("Energy errors")
+        print(self.energy_error)
+
         fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, "Energy vs Distance",
                                                   "Distance/ mm",
                                                   "Energy/ MeV", "Signal", 3)
@@ -287,7 +318,7 @@ class Data():
         sig_a = fitting_err[3][3]
 
         # b, c, d, x, deg, err_b, err_c, err_d
-        self.returnDifferential(b, c, d, distance, 3, sig_b,sig_c, sig_d)  # note: distance is a numpy array
+        self.returnDifferential(b, c, d, distance, 3, sig_b, sig_c, sig_d)  # note: distance is a numpy array
 
         plt.plot(self.energy, self.differential, "+", label="Experimental Data")
         plt.title("dE/dx vs E")
@@ -299,7 +330,7 @@ class Data():
         I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
 
         function = lambda N, Z, E, I: 3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
-        plt.plot(self.energy, function(4,2,self.energy,I),"b+", label="Model")
+        plt.plot(self.energy, function(4, 2, self.energy, I), "b+", label="Model")
         plt.legend()
 
         print("The value of the ionisation energy is: " + str(I))
@@ -312,8 +343,9 @@ class Data():
         return np.sum(chi_sqrt)
 
     def fitting_I(self, x, y, ey):
-        # make the differential -dE/dx
-        #ey = np.ones(36)
+        # ey = np.ones(36)
+        print("Errors")
+        print(ey)
         function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
         # declares the function we want to fit
         limit = 10000
@@ -324,11 +356,8 @@ class Data():
         upper = 100
         stay = True
 
-        #debug start
+        # debug start
         print("debug start")
-        print(len(y))
-        print(len(x))
-        print(len(function(4, 2, x, 5)))
 
         while stay:
             if chi_sqr < limit:
@@ -339,16 +368,16 @@ class Data():
                 print("iterations")
 
             # check higher
-            fit_y = function(4, 2, x, I + 10*step)
+            fit_y = function(4, 2, x, I + 10 * step)
             chi_sqr_high = self.getChiSqrt(fit_y, y, ey)
             # check lower
-            fit_y = function(4, 2, x, I - 10*step)
+            fit_y = function(4, 2, x, I - 10 * step)
             chi_sqr_low = self.getChiSqrt(fit_y, y, ey)
             # adjust I
             if chi_sqr_high < chi_sqr_low:
                 I += step
             else:
-                I -=step
+                I -= step
             n += 1
             print("I = " + str(I))
 
@@ -357,7 +386,6 @@ class Data():
 
     def fitting_I_2(self):
         I = 10
-
 
     # noinspection PyTupleAssignmentBalance
     def plotting_everything(self, choice):
@@ -466,8 +494,6 @@ def main():
         d.gasAnalysis()
     else:
         d.materialAnalysis()
-
-
 
     # d.plotting_everything([True, True, True, True])
 
