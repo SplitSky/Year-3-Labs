@@ -52,6 +52,9 @@ class Data():
         self.energy_error_cal = 0
         self.readData()
 
+        self.k_1 = []  # mean of the calibration with error
+        self.k_2 = []  # intercept of the calibration with error
+
     def get_x(self):
         return self.x
 
@@ -124,7 +127,6 @@ class Data():
 
         # errors for the differential
         errors = []
-
         function2 = lambda er_d, d, er_b, b, er_c, c, x: np.sqrt(er_b ** 2 + x ** 2 * er_c ** 2 + x ** 4 * er_d ** 2)
 
         errors = function2(err_d, d, err_b, b, err_c, c, x)
@@ -157,10 +159,15 @@ class Data():
             E = [4.77, 0]
             ch = [439.7, 459.8, 440.45, 220.5, 56.14, 44.45, 399.28, 350.36, 300.7, 249.5, 197.62, 100.07, 458.83,
                   378.18, 333.96, 271.38, 221.4, 0]
-            Volt_err = [3, 3, 1, 1, 1, 0.4, 1, 1, 1, 0.5, 0.5, 0.4, 1, 1, 1, 1, 1, 0.2]
-            ch_err = np.ones(len(ch)) * 5 # channel number error
+            #Volt_err = [3, 3, 1, 1, 1, 0.4, 1, 1, 1, 0.5, 0.5, 0.4, 1, 1, 1, 1, 1, 0.2]
+            Volt_err = [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35]
+            ch_err = np.ones(len(ch)) * 5  # channel number error
             dif_V = 0.5 * (42.4 + 50) - 0.304
             dif_E = 4.77  # MeV
+
+            fit_parameters = [0.25317, 0.10222]  ## obtained from origin
+            fit_errors = [[0.15295, "no"], ["no", 8.62475E-4]]
+
         else:
             # materials
             V = [88.8, 88.8, 104, 10.3, 5.72, 95.2, 85.6, 77.6, 68, 57.6, 47.6, 37, 26.6, 15.9, 5.32, 10.7, 21.4, 31.6,
@@ -173,27 +180,38 @@ class Data():
             ch_err = np.ones(len(ch)) * 5
             dif_V = 88.8 - 0.304
             dif_E = 5.8  # MeV
+            fit_parameters = [0.23652, 0.10143]  ## obtained from origin
+            fit_errors = [[0.12778, "no"], ["no", 2.4636E-4]]
 
-        m_1 = dif_E / dif_V
+
+        m_1 = dif_E / dif_V  # two point calibration
         c_1 = m_1 * 0.304 * -1
         m_e = [m_1, 0]
         c_e = [c_1, 0]
 
+        print("Two point claibration fitting variables")
+        print("m_e = {0} +- {1}".format(m_e[0], m_e[1]))
+        print("c_e = {0} +- {1}".format(c_e[0], c_e[1]))
         # relate voltage to energy
         Vin_Eout = lambda V: m_1 * V + c_1
 
         # relate channel number to voltage
-        y_weights = Volt_err
-        fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
+        # y_weights = Volt_err
+        # fit_parameters, fit_errors = np.polyfit(ch, V, 1, cov=True, w=y_weights)
+
+
 
         m_v = [fit_parameters[0], fit_errors[0][0]]
         c_v = [fit_parameters[1], fit_errors[1][1]]
 
+        print("m_v and c_v")
+        print(m_v)
+        print(c_v)
+
         def Chin_Vout(ch):
             return m_v[0] * ch + c_v[0]
 
-        def function(ch):
-            return Vin_Eout(Chin_Vout(ch))
+        function = lambda ch: Vin_Eout(Chin_Vout(ch))
 
         def energy_error(m_e, m_v, ch, c_v, c_e):
             # each value is an array [value, error]
@@ -214,14 +232,37 @@ class Data():
 
         fit_param, fit_err = np.polyfit(x, y, 1, w=err_E, cov=True)  # final fit with the proper weighting
 
-        self.coeff = fit_param
-        self.coeff_err = []
-        self.coeff_err.append(fit_err[0][0])
-        self.coeff_err.append(fit_err[1][1])
+        #self.coeff = fit_param
+        #self.coeff_err = []
+        #self.coeff_err.append(fit_err[0][0])
+        #self.coeff_err.append(fit_err[1][1])
         print("The calibration curve energy errors")
         print(err_E)
-        mean_err = np.array(err_E).mean() ## averages the mean error
-        return mean_err# returns energy errors
+        print("The calibration curve percentage errors")
+        print(np.array(err_E)/y * 100)
+
+        mean_err = np.array(err_E).mean()  ## averages the mean error
+
+        ### getting the final calibration values
+        k_1 = [0, 0]
+        k_2 = [0, 0]
+        k_1[0] = m_e[0] * m_v[0]
+        k_2[0] = m_e[0] * c_v[0] + c_e[0]
+        k_1[1] = np.sqrt((m_e[1]/m_e[0])**2 + (m_v[1]/m_v[0])**2)
+        k_2[1] = np.sqrt((m_e[1]/m_e[0])**2 + (c_v[1]/c_v[0])**2)
+        k_2[1] = np.sqrt(k_2[1]**2 + c_e[1]**2)
+
+        self.k_1 = k_1
+        self.k_2 = k_2
+        plt.plot(x,y,"+")
+        plt.xlabel("Channel number")
+        plt.ylabel("Energy/ MeV")
+
+        print("Final calibration and errors")
+        print("k_1 = {0} +- {1}".format(k_1[0], k_1[1]))
+        print("k_2 = {0} +- {1}".format(k_2[0], k_2[1]))
+
+        return mean_err  # returns energy errors
         # assigns the value within the object from the correct calibration
 
     def materialAnalysis(self):
@@ -235,16 +276,23 @@ class Data():
         scaling should take care of the rest
         '''
         self.y = np.array(self.y)  # now numpy array
-        self.distance = self.y
+
         # convert channel number into energy
         self.energy, self.energy_error = self.convertChannelNumber(np.array(self.x))
         print("Energy")
         print(self.energy)
-        print("Energy Errors")
-        print(self.energy_error)
+
+        # convert into eV
+        self.energy = self.energy * 10 ** 6
+        # convert into meters
+        self.distance = self.y / 1000
+
         print("energy errors cal")
         print(self.energy_error_cal)
-        self.energy_error = np.ones(self.energy_error.size()) * self.energy_error_cal
+        self.energy_error = np.ones(len(self.energy_error)) * self.energy_error_cal
+        print("Energy Errors")
+        print(self.energy_error)
+
         '''
         The above function finds the mean error given by the calibration fits and then propagatest the error
         onto the energy values in the experiment. The propagated statistical uncertainties are too small as the fits
@@ -255,19 +303,19 @@ class Data():
         it combines the two: statistical regression method and equipment estimate to provide a more accurate error.
         '''
         # fit cubic with energy vs distance
-        fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, "Energy vs Distance",
+        fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, " Energy vs Distance",
                                                   "Distance/ mm",
                                                   "Energy/ MeV", "Signal", 3)
         # store the differential array - generate the array using the values from the fit
         self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], self.distance, 3,
                                 fitting_err[2][2],
                                 fitting_err[1][1], fitting_err[0][0])  # note: distance is a numpy array
-        #print("differential")
-        #print(self.differential)
-        #print(self.differential_error)
+        print("differential")
+        print(self.differential)
+        print(self.differential_error)
         # obtain errors for the differential
-        #I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
-        #print("The value of the ionisation energy is: " + str(I))
+        I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
+        print("The value of the ionisation energy is: " + str(I))
 
     def gasAnalysis(self):
         # get the calibration curve
@@ -310,27 +358,32 @@ class Data():
         # b, c, d, x, deg, err_b, err_c, err_d
         self.returnDifferential(b, c, d, distance, 3, sig_b, sig_c, sig_d)  # note: distance is a numpy array
 
-        #plt.plot(self.energy, self.differential, "+", label="Experimental Data")
-        #plt.title("dE/dx vs E")
+        # plt.plot(self.energy, self.differential, "+", label="Experimental Data")
+        # plt.title("dE/dx vs E")
 
-        #print("differential")
-        #print(self.differential)
-        #print(self.differential_error)
+        # print("differential")
+        # print(self.differential)
+        # print(self.differential_error)
         # obtain errors for the differential
-        #I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
+        # I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
 
-        #function = lambda N, Z, E, I: 3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
-        #plt.plot(self.energy, function(4, 2, self.energy, I), "b+", label="Model")
-        #plt.legend()
+        # function = lambda N, Z, E, I: 3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
+        # plt.plot(self.energy, function(4, 2, self.energy, I), "b+", label="Model")
+        # plt.legend()
 
-        #print("The value of the ionisation energy is: " + str(I))
+        # print("The value of the ionisation energy is: " + str(I))
 
-    def getChiSqrt(self, fit_y, y, ey):
+    def getChiSqrt2(self, fit_y, y, ey):
         # all arrays are numpy arrays
         # returns the chi squared value
         chi_sqrt = ((y - fit_y) / ey) ** 2
         print("Chi sqr" + str(np.sum(chi_sqrt)))
         return np.sum(chi_sqrt)
+
+    def getChiSqrt(self, fit_y, y, ey):
+        thing = np.abs(y - fit_y)
+        print("Thing " + str(np.sum(thing)))
+        return np.sum(thing)
 
     def fitting_I(self, x, y, ey):
         # ey = np.ones(36)
@@ -338,16 +391,13 @@ class Data():
         print(ey)
         function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
         # declares the function we want to fit
-        limit = 10000
-        step = 0.1
-        chi_sqr = 100000000000000
-        I = 50  # estimate using 10Z eV
+        limit = 1
+        step = 0.5
+        chi_sqr = 10001
+        I = 100  # estimate using 10Z eV
         n = 0
-        upper = 100
+        upper = 10
         stay = True
-
-        # debug start
-        print("debug start")
 
         while stay:
             if chi_sqr < limit:
@@ -357,11 +407,15 @@ class Data():
                 stay = False
                 print("iterations")
 
+            if I < 0:
+                stay = False
+                print("Out of range")
+
             # check higher
-            fit_y = function(4, 2, x, I + 10 * step)
+            fit_y = function(4, 2, x, I + step)
             chi_sqr_high = self.getChiSqrt(fit_y, y, ey)
             # check lower
-            fit_y = function(4, 2, x, I - 10 * step)
+            fit_y = function(4, 2, x, I - step)
             chi_sqr_low = self.getChiSqrt(fit_y, y, ey)
             # adjust I
             if chi_sqr_high < chi_sqr_low:
@@ -372,10 +426,15 @@ class Data():
             print("I = " + str(I))
 
         self.I = I
-        return I
 
-    def fitting_I_2(self):
-        I = 10
+        plt.plot(x, y, "b+", label="data")
+        print("x and y")
+        print(x)
+        print(y)
+        plt.plot(x, function(4, 2, x, I), "+", label="model")
+        plt.legend()
+
+        return I
 
     # noinspection PyTupleAssignmentBalance
     def plotting_everything(self, choice):
@@ -478,12 +537,14 @@ class Data():
 
 
 def main():
-    file_name, type = get_choice()
-    d = Data(file_name)  # init
-    if type:
-        d.gasAnalysis()
-    else:
-        d.materialAnalysis()
+    # file_name, type = get_choice()
+    d = Data("Argon.txt")  # init
+    # if type:
+    # d.gasAnalysis()
+    # else:
+    # d.materialAnalysis()
+
+    print(d.calibrationCurve(True))
 
     # d.plotting_everything([True, True, True, True])
 
