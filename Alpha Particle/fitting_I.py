@@ -48,6 +48,8 @@ class Data():
         return self.err
 
     def readData(self):
+        # energy in eV
+        # distance in m
         """
         Argon      = 0
         Nitrogen   = 1
@@ -408,8 +410,7 @@ class Data():
 
     def fitting_I(self, x, y, ey,constant):
         # ey = np.ones(36)
-        print("Errors")
-        print(ey)
+        x = x
         function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  / constant # eV m^-1
         # declares the function we want to fit
         limit = 1
@@ -417,7 +418,7 @@ class Data():
         chi_sqr = 10001
         I = 50  # estimate using 10Z eV
         n = 0
-        upper = 10000
+        upper = 100
         stay = True
 
         while stay:
@@ -428,7 +429,7 @@ class Data():
                 stay = False
                 print("iterations")
 
-            if I < 0:
+            if I <= 0:
                 stay = False
                 print("Out of range")
 
@@ -439,7 +440,7 @@ class Data():
             fit_y = function(4, 2, x, I - step)
             chi_sqr_low = self.getChiSqrt(fit_y, y, ey)
             # adjust I
-            if chi_sqr_high < chi_sqr_low:
+            if chi_sqr_high <= chi_sqr_low:
                 I += step
             else:
                 I -= step
@@ -448,11 +449,11 @@ class Data():
 
         self.I = I
 
-        plt.plot(x, y, "b+", label="data")
+        #plt.plot(x, y, "b+", label="data")
         print("x and y")
         print(x)
         print(y)
-        plt.plot(x, function(4, 2, x, I), "+", label="model")
+        #plt.plot(x, function(4, 2, x, I), "+", label="model")
         plt.legend()
         self.fitting_data = function(4, 2, x, I)
         return I
@@ -605,28 +606,33 @@ class Data():
         d = self.coeff[3]
         differential, differential_error = self.returnDifferential(b, c, d, x)
 
+        print("Energy in eV")
         print(energy)
+        print("Differential in eV m^-1")
         print(differential)
+        print("Differential error")
         print(differential_error)
+        print("Experimental cubic fit")
+        print(y)
 
-        print(len(energy))
-        print(len(differential))
-        print(len(differential_error))
+        differential_error = 0.001 * differential_error
 
-        differential_error = 0.00001 * differential_error
-
-        # plt.plot(energy, differential)
-        plt.errorbar(energy, differential, differential_error)
+        plt.plot(energy, differential,"+")
+        plt.errorbar(energy, differential, differential_error, fmt="+")
         plt.xlabel("Energy")
         plt.ylabel("Differential")
 
         function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
         y = function(4, 2, energy, 10)
         constant = y/differential
+        #print(constant)
+        #print("Constant array")
         constant = constant.mean()
+        print("constant = " + str(constant))
 
 
-        self.fitting_I(energy*10, differential, differential_error,constant) ## supposing 2% errors
+
+        self.fitting_I(energy, differential, differential_error, constant)
         print(self.I)
         '''
         figure2 = plt.figure()
@@ -655,7 +661,7 @@ class Data():
 
 def main():
     # file_name, type = get_choice()
-    d = Data(2)
+    d = Data(5)
     # load in the datasets
     d.analysis()
 
