@@ -34,6 +34,9 @@ class Data():
         self.y = []
         self.set = set
         self.coeff = []
+        self.differential = []
+        self.differential_error = []
+        self.fitting_data = []
 
     def get_x(self):
         return self.x
@@ -259,7 +262,7 @@ class Data():
         errors = function2(d[1], d[0], b[1], b[0], c[1], c[0], x)
         array = function(b[0], c[0], d[0], x)  # gets the function for each entry of x
 
-        self.differential = np.array(array)
+        self.differential = -1 * np.array(array)
         self.differential_error = np.array(errors)
         return self.differential, self.differential_error
 
@@ -391,138 +394,30 @@ class Data():
         return mean_err  # returns energy errors
         # assigns the value within the object from the correct calibration
 
-    def materialAnalysis(self):
-        # get the calibration curve
-        self.energy_error_cal = self.calibrationCurve(False)
-        # convert pressure into distance
-        # mm  - conversion from the micro meters which the data is recorded in
-        '''
-        to keep the units consistent the data has been recorded in um but here it is
-        converted into mm to ensure the plots are comparable
-        scaling should take care of the rest
-        '''
-        self.y = np.array(self.y)  # now numpy array
-
-        # convert channel number into energy
-        self.energy, self.energy_error = self.convertChannelNumber(np.array(self.x))
-        print("Energy")
-        print(self.energy)
-
-        # convert into eV
-        self.energy = self.energy * 10 ** 6
-        # convert into meters
-        self.distance = self.y / 1000
-
-        print("energy errors cal")
-        print(self.energy_error_cal)
-        self.energy_error = np.ones(len(self.energy_error)) * self.energy_error_cal
-        print("Energy Errors")
-        print(self.energy_error)
-
-        '''
-        The above function finds the mean error given by the calibration fits and then propagatest the error
-        onto the energy values in the experiment. The propagated statistical uncertainties are too small as the fits
-        do not account fully for the fluctuations that are observed. The calibration curve is given as the most
-        accurate depiction of the variability of energy against the channel number. The resolution given by the FWHM is
-        also an underestimate of the order of 0.2, while the errors here are about 0.17 which is closer but also allows
-        for the decrease in the error given by the regression methods used. This is given as a more accurate method as
-        it combines the two: statistical regression method and equipment estimate to provide a more accurate error.
-        '''
-        # fit cubic with energy vs distance
-        fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, " Energy vs Distance",
-                                                  "Distance/ mm",
-                                                  "Energy/ MeV", "Signal", 3)
-        # store the differential array - generate the array using the values from the fit
-        self.returnDifferential(fitting_coeff[2], fitting_coeff[1], fitting_coeff[0], self.distance, 3,
-                                fitting_err[2][2],
-                                fitting_err[1][1], fitting_err[0][0])  # note: distance is a numpy array
-        print("differential")
-        print(self.differential)
-        print(self.differential_error)
-        # obtain errors for the differential
-        I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
-        print("The value of the ionisation energy is: " + str(I))
-
-    def gasAnalysis(self):
-        # get the calibration curve
-        self.energy_error_cal = self.calibrationCurve(True)
-        # convert pressure into distance
-        distance = 142.3 * (np.array(self.y) / 1000)  # mm  - convert from pressure into effective distance
-        self.y = distance  # now numpy array
-        self.distance = distance
-        # convert channel number into energy
-        self.energy, self.energy_error = self.convertChannelNumber(np.array(self.x))
-        print("Energy")
-        print(self.energy)
-        print("Energy Errors")
-        print(self.energy_error)
-        # fit cubic with energy vs distance
-
-        self.distance = self.distance / 1000
-        self.energy = self.energy * 10 ** 6
-
-        print("Energy errors")
-        size = len(self.energy)
-        print("size: " + str(size))
-        self.energy_error = np.ones(size) * self.energy_error_cal
-        print(self.energy_error)
-        print(self.energy_error)
-
-        fitting_coeff, fitting_err = self.DataFit(self.distance, self.energy, self.energy_error, "Energy vs Distance",
-                                                  "Distance/ mm",
-                                                  "Energy/ MeV", "Signal", 3)
-        # store the differential array - generate the array using the values from the fit
-
-        d = fitting_coeff[0]
-        c = fitting_coeff[1]
-        b = fitting_coeff[2]
-        a = fitting_coeff[3]
-        sig_d = fitting_err[0][0]
-        sig_c = fitting_err[1][1]
-        sig_b = fitting_err[2][2]
-        sig_a = fitting_err[3][3]
-        # b, c, d, x, deg, err_b, err_c, err_d
-        self.returnDifferential(b, c, d, distance, 3, sig_b, sig_c, sig_d)  # note: distance is a numpy array
-
-        # plt.plot(self.energy, self.differential, "+", label="Experimental Data")
-        # plt.title("dE/dx vs E")
-
-        # print("differential")
-        # print(self.differential)
-        # print(self.differential_error)
-        # obtain errors for the differential
-        # I = self.fitting_I(self.energy, np.array(self.differential), self.differential_error)
-
-        # function = lambda N, Z, E, I: 3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I))
-        # plt.plot(self.energy, function(4, 2, self.energy, I), "b+", label="Model")
-        # plt.legend()
-
-        # print("The value of the ionisation energy is: " + str(I))
-
-    def getChiSqrt2(self, fit_y, y, ey):
+    def getChiSqrt(self, fit_y, y, ey):
         # all arrays are numpy arrays
         # returns the chi squared value
         chi_sqrt = ((y - fit_y) / ey) ** 2
         print("Chi sqr" + str(np.sum(chi_sqrt)))
         return np.sum(chi_sqrt)
 
-    def getChiSqrt(self, fit_y, y, ey):
+    def getChiSqrt2(self, fit_y, y, ey):
         thing = np.abs(y - fit_y)
         print("Thing " + str(np.sum(thing)))
         return np.sum(thing)
 
-    def fitting_I(self, x, y, ey):
+    def fitting_I(self, x, y, ey,constant):
         # ey = np.ones(36)
         print("Errors")
         print(ey)
-        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
+        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  / constant # eV m^-1
         # declares the function we want to fit
         limit = 1
-        step = 0.5
+        step = 1
         chi_sqr = 10001
-        I = 100  # estimate using 10Z eV
+        I = 50  # estimate using 10Z eV
         n = 0
-        upper = 10
+        upper = 10000
         stay = True
 
         while stay:
@@ -559,7 +454,7 @@ class Data():
         print(y)
         plt.plot(x, function(4, 2, x, I), "+", label="model")
         plt.legend()
-
+        self.fitting_data = function(4, 2, x, I)
         return I
 
         # noinspection PyTupleAssignmentBalance
@@ -689,7 +584,7 @@ class Data():
         self.coeff = [a, b, c, d]
 
         def function(a1, b1, c1, d1, x1):
-            return a1 + b1 * x + c1 * x ** 2 + d1 * x ** 3
+            return a1[0] + b1[0] * x + c1[0] * x ** 2 + d1[0] * x ** 3
 
         return function(a, b, c, d, x)
 
@@ -700,35 +595,67 @@ class Data():
         # plotting the -differential against energy plot with fit
 
         x = np.array(energy)
-        
+        energy = x
+        y = self.experimental_cubic(self.set, x)
         y_err = np.array(self.differential_error)
 
-        figure2 = plt.figure()
-        axes_3 = figure2.add_subplot(121)
-        axes_3.plot(x, y, "b+")
-        axes_3.errorbar(x, y, y_err, fmt="b+")
-        plt.xlabel("-dE/dx")
-        plt.ylabel("E")
-        plt.title("Differential Energy plot")
-        y_weights = (1 / y_err) * np.ones(np.size(y))
-        y_errors = self.energy_error * np.ones(np.size(y))
-        fit_parameters, fit_errors = np.polyfit(x, y, 5, cov=True, w=self.energy_error)
+        a = self.coeff[0]
+        b = self.coeff[1]
+        c = self.coeff[2]
+        d = self.coeff[3]
+        differential, differential_error = self.returnDifferential(b, c, d, x)
 
-        y_fitted = np.polyval(fit_parameters, x)
-        axes_3.plot(x, y_fitted)  # fit the model onto the first plot
+        print(energy)
+        print(differential)
+        print(differential_error)
+
+        print(len(energy))
+        print(len(differential))
+        print(len(differential_error))
+
+        differential_error = 0.00001 * differential_error
+
+        # plt.plot(energy, differential)
+        plt.errorbar(energy, differential, differential_error)
+        plt.xlabel("Energy")
+        plt.ylabel("Differential")
+
+        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
+        y = function(4, 2, energy, 10)
+        constant = y/differential
+        constant = constant.mean()
+
+
+        self.fitting_I(energy*10, differential, differential_error,constant) ## supposing 2% errors
+        print(self.I)
+        '''
+        figure2 = plt.figure()
+        axes_3 = figure2.add_subplot(111)
+        #axes_3.plot(energy, differential, "b+", label="Experimental data")
+        axes_3.errorbar(energy,differential,"+")
+        axes_3.legend()
+        axes_3.set_ylabel("-dE/dx")
+        axes_3.set_xlabel("E")
+        axes_3.set_title("Differential Energy plot")
+        I = 20  # first guess
+        model = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
+        y_fitted = model(4, 2, energy, I)
+
+        axes_3.plot(x, y_fitted, label="Model")  # fit the model onto the first plot
         axes_4 = figure2.add_subplot(122)
         axes_4.set_xlabel("-dE/dx")
         axes_4.set_ylabel("Error")
-        axes_4.errorbar(x, y - y_fitted, yerr=y_errors, fmt='b+')
+        axes_4.errorbar(x, y - y_fitted, yerr=energy_error, fmt='b+')
         plt.savefig("Differential_Plot.png")
         # plots the model on top of it
 
         # plot the model using the function
+        '''
 
 
 def main():
     # file_name, type = get_choice()
-    d = Data(1)
+    d = Data(2)
     # load in the datasets
     d.analysis()
 
