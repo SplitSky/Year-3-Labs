@@ -599,7 +599,6 @@ class Data():
         energy = x
         y = self.experimental_cubic(self.set, x)
         y_err = np.array(self.differential_error)
-
         a = self.coeff[0]
         b = self.coeff[1]
         c = self.coeff[2]
@@ -614,7 +613,6 @@ class Data():
         print(differential_error)
         print("Experimental cubic fit")
         print(y)
-
         differential_error = 0.001 * differential_error
 
         plt.plot(energy, differential,"+")
@@ -625,13 +623,8 @@ class Data():
         function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
         y = function(4, 2, energy, 10)
         constant = y/differential
-        #print(constant)
-        #print("Constant array")
         constant = constant.mean()
         print("constant = " + str(constant))
-
-
-
         self.fitting_I(energy, differential, differential_error, constant)
         print(self.I)
         '''

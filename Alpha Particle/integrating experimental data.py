@@ -176,47 +176,12 @@ def Argon():
     length = len(energy_loss)
 
     energy_loss = np.array(energy_loss)
-    energy = 4.77 - energy_loss
-    print("zdskjudawhknj")
-    print(energy)
     distance = np.array(distance)
 
     model_values = model(4, 2, energy_loss, 15)
-    # constant = model_values / function(b[0], c[0], d[0], e[0], f[0], energy_loss)
-    # plt.plot(energy_loss, model_values, "+", label="model")
-    # plt.plot(energy_loss, function(b[0], c[0], d[0], e[0], f[0], energy_loss), "+", label="data")
-
-    I = 15
-
-    # plt.xlabel("Energy loss / MeV")
-    # plt.ylabel("-dE/dx / eVm^-1")
-    # plt.title("Argon")
-
+    plt.plot(energy_loss, -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss), "m+", label="Argon")
     differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
-    range1 = []
-
-    for counter in range(0, length, 1):
-        range1.append(Simpson(energy[counter], 4.77, 500, function2))
-
-    print("Values of range")
-    print(range1)
-
-    plt.plot(np.array(range1) * -1, energy, "+", label="experimental")
-    plt.title("Effective Range of alpha particle- Argon")
-    plt.xlabel("Average Range/ m")
-    plt.ylabel("Particle Energy/ MeV")
-
-    N = 0.0025 * 10 ** 28
-    range1 = []
-    for counter in range(0, length, 1):
-        range1.append(Simpson(energy[counter], 4.77, 500, function3))
-
-    print("Theoretical values")
-
-    print(range1)
-    plt.plot(np.array(range1) * -1, energy_loss, "+", label="theoretical")
-    plt.legend()
-    plt.show()
+    plt.errorbar(energy_loss, differential, differential * 0.10, fmt="m+")
 
 
 def Helium1():
@@ -244,22 +209,118 @@ def Helium1():
     # constant = np.mean(constant)
     # plt.plot(energy_loss, model_values, "+", label="model")
 
-    plt.plot(energy_loss, -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss), "+", label="data")
-    plt.xlabel("Energy loss / MeV")
-    plt.ylabel("-dE/dx / eVm^-1")
-    plt.title("Helium")
-
-    # I = fitting_I(energy_loss, function(b[0], c[0], d[0], e[0], f[0], energy_loss))
-    ### errors for argon
-    plt.legend()
-    plt.show()
-
-    '''
-    attempt no.1
-    positive distance
-    energy loss
-    check differential
-    '''
+    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    plt.plot(energy_loss, -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss), "+", label="Helium 1")
 
 
-Argon()
+
+def Helium2():
+    a = [-0.01763, 0.01314]
+    b = [16.97025, 1.88807]
+    c = [106.52984, 81.56778]
+    d = [-2155.39018, 1397.72986]
+    e = [20993.39666, 10102.44543]
+    f = [-57770.64359, 25820.20065]
+    energy_loss = [-0.00512, 0.01073, 0.05502, 0.06813, 0.09902, 0.11924, 0.16048, 0.1808, 0.19798, 0.2251, 0.24806,
+                   0.27814, 0.30587, 0.34204, 0.36358, 0.37598, 0.39193, 0.52889, 0.80392, 1.11339, 1.36902, 1.77592,
+                   2.09536, 2.49403, 3.01951, 3.63866, 3.84958, 4.05989, 4.19258, 0.40859, 0.95246, 1.26945, 1.77592,
+                   2.35413, 3.01951, 4.29571]
+    distance = [0.0008538, 0.00215, 0.00406, 0.00515, 0.00663, 0.0078, 0.00936, 0.01083, 0.01214, 0.01365, 0.01494,
+                0.01665, 0.01793, 0.01935, 0.01992, 0.02078, 0.02149, 0.03059, 0.04397, 0.05891, 0.07058, 0.08652,
+                0.10004, 0.11469, 0.12736, 0.14372, 0.14942, 0.15368, 0.15653, 0.0222, 0.05094, 0.06546, 0.08652,
+                0.10744, 0.12736, 0.1608]
+
+    energy_loss = np.array(energy_loss)
+    distance = np.array(distance)
+    function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
+    # differential
+    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+
+    ey = get_diff_error(b, c, d, e, f, energy_loss)
+    plt.plot(energy_loss, differential, "b+", label="Helium 2")
+    plt.errorbar(energy_loss, differential, differential*0.10, fmt="b+")
+
+
+def Nitrogen():
+    a = [0.06525, 0.03177]
+    b = [59.3309, 21.39043]
+    c = [8793.90858, 4395.99209]
+    d = [-677621.08937, 372224.88171]
+    e = [2.53573E7, 1.38091E7]
+    f = [-3.10349E8, 1.86203E8]
+    energy_loss = [0.11263, 0.24349, 0.35566, 0.55418, 0.69023, 0.85157, 0.97643, 1.1775, 1.32746, 1.50232, 1.64059,
+                   1.77775, 1.86452, 1.95383, 2.07747, 2.2123, 2.30242, 2.38451, 2.4537, 2.59655, 2.75098, 2.88753,
+                   3.0506, 3.24171, 3.29302, 3.45659, 3.64912, 3.75895, 3.93005, 4.06284]
+
+    distance = [-0.000734268, -0.00235, -0.00351, -0.00528, -0.00662, -0.00803, -0.00924, -0.01072, -0.01214, -0.0135,
+                -0.01451, -0.01551, -0.01636, -0.01708, -0.01765, -0.0185, -0.01921, -0.02006, -0.02035, -0.0212,
+                -0.02206, -0.02263, -0.02362, -0.02433, -0.02504, -0.02561, -0.02633, -0.02704, -0.02775, -0.02832]
+
+    energy_loss = np.array(energy_loss)
+    distance = -1*np.array(distance)
+    function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
+    # differential
+    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    plt.plot(energy_loss, differential, "g+", label="Nitrogen")
+    plt.errorbar(energy_loss, differential, differential * 0.10, fmt="g+")
+
+
+def Aluminium():
+    a = [-0.06297, 0.06021]
+    b = [116143.67261, 79036.3635]
+    c = [2.23385E10, 2.77898E10]
+    d = [-1.83487E15, 2.57161E15]
+    e = [-2.60596E10, 3.6523E10]
+    f = [-257487.71374, 360873.75439]
+    energy_loss = [1.21893, 0.83751, 0.81066, 0.63496, 0.27489, 0.45264, 0.26216, -0.06477, 1.21999, 0.83711, 0.81198,
+                   0.83937, 0.26441, -0.06271]
+
+    distance = [-7e-06, -5e-06, -5e-06, -4e-06, -2e-06, -3e-06, -2e-06, 0, -7e-06, -5e-06, -5e-06, -4e-06, -3e-06, 0]
+
+
+    energy_loss = np.array(energy_loss)
+    distance = -1* np.array(distance)
+    function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
+    # differential
+    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    plt.plot(energy_loss, differential, "k+", label="Aluminium")
+    plt.errorbar(energy_loss, differential, differential * 0.30, fmt="k+")
+
+
+def Nickel():
+    a = [-0.06436, 0.01268]
+    b = [391097.88528, 11903.6986]
+    c = [-4.73144E9, 2.92109E9]
+    d = [1.7973E15, 1.96189E14]
+    e = [3.50385E10, 3.82471E9]
+    f = [482402.88167, 52657.82006]
+    energy_loss = [5.18016, 3.70319, 3.07666, 2.48712, 1.14866, 2.52922, 1.96607, 0.31241, 0.71386, 1.53631, -0.0643,
+                   3.67714, 4.35234, 2.48765, 1.12366, 2.51682, 1.96507, 0.31487, 0.71035, 1.54433, -0.05734]
+
+    distance = [1e-05, 8e-06, 7e-06, 6e-06, 3e-06, 6e-06, 5e-06, 1e-06, 2e-06, 4e-06, 0, 8e-06, 9e-06, 6e-06, 3e-06,
+                6e-06, 5e-06, 1e-06, 2e-06, 4e-06, 0]
+
+    energy_loss = np.array(energy_loss)
+    distance = np.array(distance)
+    function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
+    # differential
+    differential = -1*function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    plt.plot(energy_loss, differential, "c+", label="Nickel")
+    plt.errorbar(energy_loss, differential, differential * 0.10, fmt="c+")
+
+
+
+#Argon()
+#Helium1()
+#Helium2()
+#Nitrogen()
+#Nickel()
+Aluminium()
+
+
+plt.legend()
+
+plt.xlabel("Energy loss / MeV")
+plt.ylabel("-dE/dx / eVm^-1")
+plt.title("Stopping power against energy loss")
+plt.show()
