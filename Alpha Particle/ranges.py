@@ -238,10 +238,10 @@ def Helium2():
 
     ey = get_diff_error(b, c, d, e, f, energy_loss)
 
-    energy = 4.77 - energy_loss
+    energy = energy_loss
     ranges = []
     temp = 0
-    for entry in energy:
+    for entry in energy_loss:
         temp = Simpson(entry, 4.77, 10000, function2)
         ranges.append(temp)
     ranges = np.array(ranges)
@@ -249,11 +249,11 @@ def Helium2():
     print(ranges.mean())
 
     print(ranges)
-    plt.plot(ranges, energy, "b+", label="range")
+    plt.plot(ranges, energy_loss, "b+", label="range")
     plt.xlabel("Average Range/ m")
     plt.ylabel("Particle Energy/ MeV")
-    ey = energy * 0.058
-    plt.errorbar(ranges, energy, ey, fmt="b+")
+    ey = energy_loss * 0.058
+    plt.errorbar(ranges, energy_loss, ey, fmt="b+")
 
 
 def Nitrogen():
@@ -351,8 +351,8 @@ def Nickel():
 
 
 # Argon()
-# Helium2()
-Nickel()
+Helium2()
+#Nickel()
 plt.legend()
 
 # plt.xlabel("Energy loss / MeV")
