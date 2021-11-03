@@ -411,7 +411,7 @@ class Data():
     def fitting_I(self, x, y, ey,constant):
         # ey = np.ones(36)
         x = x
-        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  / constant # eV m^-1
+        function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10E-19  / constant # eV m^-1
         # declares the function we want to fit
         limit = 1
         step = 1

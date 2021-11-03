@@ -1,4 +1,3 @@
-import numpy as np
 import matplotlib.pyplot as plt
 
 ### expected ionisation energy values
@@ -8,15 +7,19 @@ Nickel	    28  	7.6398
 Helium	    2   	24.58738
 Argon	    18  	15.75962
 Nitrogen	7   	14.53414
+
+// only value for Helium is correct
+
 '''
+density_N = [6.04e+28, 9.24e+28, 5e+25, 2.5e+25, 2.5e+25]
+# order of density numbers is:
+# Aluminium-27
+# Nickel-58
+# Nitrogen-14
+# Argon-40
+# Helium-4
+### use Helium to verify the data works
 
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Oct 21 10:19:14 2021
-
-@author: arencatonyener
-"""
 
 # Simpson's 1/3 Rule
 
@@ -24,9 +27,7 @@ Created on Thu Oct 21 10:19:14 2021
 
 import numpy as np
 
-N = 4
 Z = 2
-I = 5
 
 
 def Simpson(lower_limit, upper_limit, sub_interval, function):
@@ -76,60 +77,18 @@ def getChiSqrt(fit_y, y):
     return np.sum(chi_sqrt)
 
 
-def fitting_I(x, y):
+def fitting_I(x, y, I_init, N):
     # ey = np.ones(36)
+    I = I_init
     x = x
-    function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
-    # declares the function we want to fit
-    limit = 1
-    step = 0.01
-    chi_sqr = 10001
-    I = 15  # estimate using 10Z eV
-    n = 0
-    upper = 100
-    stay = True
-
-    while stay:
-        if chi_sqr < limit:
-            stay = False
-            print("limit")
-        if n > upper:
-            stay = False
-            print("iterations")
-
-        if I <= 0:
-            stay = False
-            print("Out of range")
-
-        # check higher
-        fit_y = function(4, 2, x, I + step)
-        chi_sqr_high = getChiSqrt(fit_y, y)
-        # check lower
-        fit_y = function(4, 2, x, I - step)
-        chi_sqr_low = getChiSqrt(fit_y, y)
-        # adjust I
-        print("Chi low: " + str(chi_sqr_low))
-        print("Chi high: " + str(chi_sqr_high))
-        if chi_sqr_high < chi_sqr_low:
-            I += step
-            chi_sqr = chi_sqr_high
-        elif chi_sqr_high > chi_sqr_low:
-            I -= step
-            chi_sqr = chi_sqr_low
-        else:
-            I = I
-            print("Oscillating")
-            stay = False
-            # break out of the loop because the value sees no improvement
-
-        n += 1
-        print("I = " + str(I))
+    function = lambda E: -3.801 * (N * 2 / E) * (np.log(E) + 6.307 - np.log(I)) * 1E-19  # eV m^-1
 
     # plt.plot(x, y, "b+", label="data")
-    print("x and y")
+    # print("x and y")
     # plt.plot(x, function(4, 2, x, I), "+", label="model")
-    plt.legend()
-    fitting_data = function(4, 2, x, I)
+    # plt.legend()
+    fitting_data = function(x)
+
     return I
 
 
@@ -219,47 +178,79 @@ def Argon():
     plt.show()
 
 
-def Helium1():
-    a = [-0.01108, 0.04096]
-    b = [28.96517, 24.01517]
-    c = [-5433.52023, 4396.24059]
-    d = [776569.25218, 332637.91901]
-    e = [-2.7429E7, 1.09724E7]
-    f = [3.27238E8, 1.30651E8]
-    energy_loss = [0.0533, 0.06427, 0.08327, 0.10725, 0.17004, 0.21372, 0.30852, 0.41835, 0.57156, 0.68454, 0.84161,
-                   1.01321, 1.18492, 1.39045, 1.53473, 1.76028, 1.90069, 2.10064, 2.40635, 2.619, 3.1522]
-    distance = [-0.0025, -0.00388, -0.00499, -0.00632, -0.00795, -0.00928, -0.01073, -0.01221, -0.0138, -0.01508,
-                -0.01651, -0.01779, -0.01921, -0.02078, -0.0222, -0.02391, -0.02504, -0.02647, -0.02775, -0.02974,
-                -0.03273]
+def Helium2():
+    a = [4.78763, 0.01314]
+    b = [-16.97025, 1.88807]
+    c = [-106.52984, 81.56778]
+    d = [2155.39018, 1397.72986]
+    e = [-20993.39666, 10102.44543]
+    f = [57770.64359, 25820.20065]
+
+    N = density_N[4]
+    I = 40
+
+    def function2(x):
+        a = [4.78763, 0.01314]
+        b = [-16.97025, 1.88807]
+        c = [-106.52984, 81.56778]
+        d = [2155.39018, 1397.72986]
+        e = [-20993.39666, 10102.44543]
+        f = [57770.64359, 25820.20065]
+
+        return 1 / (b[0] + 2 * c[0] * x + 3 * d[0] * x ** 2 + 4 * e[0] * x ** 3 + 5 * f[0] * x ** 4)
+
+    def function3(x):
+        # the theoretical function for obtaining the range
+        return 3.801 * (N * 2 / x) * (np.log(np.abs(x)) + 6.307 - np.log(I)) * 1E-19  # eV m^-1
+
+    energy_loss = [-0.00512, 0.01073, 0.05502, 0.06813, 0.09902, 0.11924, 0.16048, 0.1808, 0.19798, 0.2251, 0.24806,
+                   0.27814, 0.30587, 0.34204, 0.36358, 0.37598, 0.39193, 0.52889, 0.80392, 1.11339, 1.36902, 1.77592,
+                   2.09536, 2.49403, 3.01951, 3.63866, 3.84958, 4.05989, 4.19258, 0.40859, 0.95246, 1.26945, 1.77592,
+                   2.35413, 3.01951, 4.29571]  # energy loss in MeV
+    distance = [0.0008538, 0.00215, 0.00406, 0.00515, 0.00663, 0.0078, 0.00936, 0.01083, 0.01214, 0.01365, 0.01494,
+                0.01665, 0.01793, 0.01935, 0.01992, 0.02078, 0.02149, 0.03059, 0.04397, 0.05891, 0.07058, 0.08652,
+                0.10004, 0.11469, 0.12736, 0.14372, 0.14942, 0.15368, 0.15653, 0.0222, 0.05094, 0.06546, 0.08652,
+                0.10744, 0.12736, 0.1608]  # in meters
 
     energy_loss = np.array(energy_loss)
-    distance = -1 * np.array(distance)
-
+    distance = np.array(distance)
     function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
     # differential
-    model = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
+    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
 
-    model_values = model(4, 2, energy_loss, 2)
-    # constant = model_values / function(b[0], c[0], d[0], e[0], f[0], energy_loss)
-    # constant = np.mean(constant)
-    # plt.plot(energy_loss, model_values, "+", label="model")
+    ey = get_diff_error(b, c, d, e, f, energy_loss)
 
-    plt.plot(energy_loss, -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss), "+", label="data")
-    plt.xlabel("Energy loss / MeV")
-    plt.ylabel("-dE/dx / eVm^-1")
-    plt.title("Helium")
+    energy = energy_loss
+    ranges = []
+    temp = 0
+    for entry in energy_loss:
+        temp = Simpson(entry, 4.77, 10000, function2)
+        ranges.append(temp)
+    ranges = np.array(ranges)
+    print("Ranges:")
+    print(ranges)
 
-    # I = fitting_I(energy_loss, function(b[0], c[0], d[0], e[0], f[0], energy_loss))
-    ### errors for argon
-    plt.legend()
-    plt.show()
+    plt.plot(ranges, energy_loss, "b+", label="range experimental")
+    plt.xlabel("Average Range/ m")
+    plt.ylabel("Particle Energy/ MeV")
+    ey = energy_loss * 0.058
+    plt.errorbar(ranges, energy_loss, ey, fmt="b+")
 
-    '''
-    attempt no.1
-    positive distance
-    energy loss
-    check differential
-    '''
+    # calculate the theoretical values
+    ranges2 = []
+    for entry in energy_loss:
+        temp = Simpson(entry, 4.77, 10000, function3)
+        ranges2.append(temp)
+
+    ranges2 = np.array(ranges2)
+    print("Ranges 2")
+    print(ranges2)
+    plt.plot(ranges2, energy_loss, "c+", label="range theoretical")
+    ey2 = energy_loss * 0.058
+    plt.errorbar(ranges2, energy_loss, ey, fmt="c+")
 
 
-Argon()
+Helium2()
+plt.show()
+
+
