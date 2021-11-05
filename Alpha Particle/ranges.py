@@ -24,9 +24,23 @@ Created on Thu Oct 21 10:19:14 2021
 
 import numpy as np
 
+
+N_Aluminiun = 6.04E28
+N_Nickel = 9.24E28
+N_Nitrogen = 0.005E28
+N_Argon = 0.0025E28
+N_Helium = 0.0025E28
+
 N = 4
 Z = 2
 I = 5
+
+def fitting_return(function,energy, lower, upper):
+    # returns the whole array of ranges which is to be compared between the theoretical and experimental data contained
+    # comparison done by range against energy plot
+
+
+    integral = Simpson(lower, upper, len(energy)*10000, function)
 
 
 def Simpson(lower_limit, upper_limit, sub_interval, function):
@@ -36,7 +50,6 @@ def Simpson(lower_limit, upper_limit, sub_interval, function):
     def simpson13(x0, xn, n):
         # calculating step size
         h = (xn - x0) / n
-
         # Finding sum
         integration = f(x0) + f(xn)
 
@@ -59,7 +72,6 @@ def Simpson(lower_limit, upper_limit, sub_interval, function):
     print("Integration result by Simpson's 1/3 method is: {0}".format(result))
     return result
 
-
 def get_diff_error(b, c, d, e, f, x):
     temp = (b[1] ** 2)
     temp1 = ((2 * x) ** 2 * c[1] ** 2)
@@ -68,15 +80,13 @@ def get_diff_error(b, c, d, e, f, x):
     temp4 = (5 * x ** 4) ** 2 * f[1] ** 2
     return temp + temp1 + temp2 + temp3 + temp4  # returns numpy array of errors
 
-
 def getChiSqrt(fit_y, y):
     # all arrays are numpy arrays
     # returns the chi squared value
     chi_sqrt = (y - fit_y) ** 2
     return np.sum(chi_sqrt)
 
-
-def fitting_I(x, y):
+def fitting_I(x, y, density):
     # ey = np.ones(36)
     x = x
     function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 10 ** (-19)  # eV m^-1
@@ -88,6 +98,7 @@ def fitting_I(x, y):
     n = 0
     upper = 100
     stay = True
+    N = density
 
     while stay:
         if chi_sqr < limit:
@@ -102,10 +113,10 @@ def fitting_I(x, y):
             print("Out of range")
 
         # check higher
-        fit_y = function(4, 2, x, I + step)
+        fit_y = function(N, 2, x, I + step)
         chi_sqr_high = getChiSqrt(fit_y, y)
         # check lower
-        fit_y = function(4, 2, x, I - step)
+        fit_y = function(N, 2, x, I - step)
         chi_sqr_low = getChiSqrt(fit_y, y)
         # adjust I
         print("Chi low: " + str(chi_sqr_low))
@@ -130,6 +141,19 @@ def fitting_I(x, y):
     # plt.plot(x, function(4, 2, x, I), "+", label="model")
     plt.legend()
     fitting_data = function(4, 2, x, I)
+    return I
+
+def fitting_I(x, y, density):
+    function = lambda N, Z, E, I: -3.801 * (N * Z / E) * (np.log(E) + 6.307 - np.log(I)) * 1E-19  # eV m^-1
+    I = 10
+
+    # calculate the integral of the experimental value
+    # calculate the integral of the theoretical model
+    # compare
+    # change the value up or down
+    # repeat
+
+
     return I
 
 

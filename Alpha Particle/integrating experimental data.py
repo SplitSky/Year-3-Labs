@@ -138,20 +138,21 @@ def Argon():
     # a + bx + cx^2 + dx^3 + ex^4 fx^5
     # fitting values of a 5 degree polynomial onto the stopping power versus distance
 
-    a = [-0.00638, 0.05115]
-    b = [85.73468, 32.34848]
-    c = [1952.54653, 6315.76888]
-    d = [-131683.9021, 508997.7539]
-    e = [7503848.839, 1.80E+07]
-    f = [-1.02E+08, 2.31E+08]
+    a = [4.77638, 0.05115]
+    b = [-85.73468, 32.34848]
+    c = [-1952.54653, 6315.76888]
+    d = [131683.90214, 508997.75393]
+    e = [-7503848.83866, 1.79768E7]
+    f = [1.02038E8, 2.30634E8]
 
     def function2(x):
-        a = [-0.00638, 0.05115]
-        b = [85.73468, 32.34848]
-        c = [1952.54653, 6315.76888]
-        d = [-131683.9021, 508997.7539]
-        e = [7503848.839, 1.80E+07]
-        f = [-1.02E+08, 2.31E+08]
+        a = [4.77638, 0.05115]
+        b = [-85.73468, 32.34848]
+        c = [-1952.54653, 6315.76888]
+        d = [131683.90214, 508997.75393]
+        e = [-7503848.83866, 1.79768E7]
+        f = [1.02038E8, 2.30634E8]
+
         return 1 / (b[0] + 2 * c[0] * x + 3 * d[0] * x ** 2 + 4 * e[0] * x ** 3 + 5 * f[0] * x ** 4)
 
     def function3(x):
@@ -175,12 +176,19 @@ def Argon():
 
     length = len(energy_loss)
 
-    energy_loss = np.array(energy_loss)
+    energy = 4.77 - np.array(energy_loss)
+
+    print("Energy: ")
+    print(energy)
+
     distance = np.array(distance)
 
     model_values = model(4, 2, energy_loss, 15)
     plt.plot(energy_loss, -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss), "m+", label="Argon")
-    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    differential = function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    print("Differential")
+    print(differential)
+
     plt.errorbar(energy_loss, differential, differential * 0.10, fmt="m+")
 
 
@@ -213,7 +221,6 @@ def Helium1():
     plt.plot(energy_loss, -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss), "+", label="Helium 1")
 
 
-
 def Helium2():
     a = [-0.01763, 0.01314]
     b = [16.97025, 1.88807]
@@ -238,7 +245,7 @@ def Helium2():
 
     ey = get_diff_error(b, c, d, e, f, energy_loss)
     plt.plot(energy_loss, differential, "b+", label="Helium 2")
-    plt.errorbar(energy_loss, differential, differential*0.10, fmt="b+")
+    plt.errorbar(energy_loss, differential, differential * 0.10, fmt="b+")
 
 
 def Nitrogen():
@@ -257,7 +264,7 @@ def Nitrogen():
                 -0.02206, -0.02263, -0.02362, -0.02433, -0.02504, -0.02561, -0.02633, -0.02704, -0.02775, -0.02832]
 
     energy_loss = np.array(energy_loss)
-    distance = -1*np.array(distance)
+    distance = -1 * np.array(distance)
     function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
     # differential
     differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
@@ -277,9 +284,8 @@ def Aluminium():
 
     distance = [-7e-06, -5e-06, -5e-06, -4e-06, -2e-06, -3e-06, -2e-06, 0, -7e-06, -5e-06, -5e-06, -4e-06, -3e-06, 0]
 
-
     energy_loss = np.array(energy_loss)
-    distance = -1* np.array(distance)
+    distance = -1 * np.array(distance)
     function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
     # differential
     differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
@@ -304,19 +310,17 @@ def Nickel():
     distance = np.array(distance)
     function = lambda b1, c1, d1, e1, f1, x1: b1 + 2 * c1 * x1 + 3 * d1 * x1 ** 2 + 4 * x1 ** 3 + 5 * f1 * x1 ** 4
     # differential
-    differential = -1*function(b[0], c[0], d[0], e[0], f[0], energy_loss)
+    differential = -1 * function(b[0], c[0], d[0], e[0], f[0], energy_loss)
     plt.plot(energy_loss, differential, "c+", label="Nickel")
     plt.errorbar(energy_loss, differential, differential * 0.10, fmt="c+")
 
 
-
-#Argon()
-#Helium1()
-#Helium2()
-#Nitrogen()
-#Nickel()
-Aluminium()
-
+Argon()
+# Helium1()
+# Helium2()
+# Nitrogen()
+# Nickel()
+# Aluminium()
 
 plt.legend()
 
@@ -324,3 +328,5 @@ plt.xlabel("Energy loss / MeV")
 plt.ylabel("-dE/dx / eVm^-1")
 plt.title("Stopping power against energy loss")
 plt.show()
+
+
